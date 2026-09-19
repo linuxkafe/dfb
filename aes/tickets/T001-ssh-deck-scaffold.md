@@ -3,7 +3,7 @@ ticket: T001
 title: SSH connectivity & service scaffold on Steam Deck
 sprint: sprint-01
 priority: high
-status: pending
+status: done
 created: 2026-09-19
 ---
 

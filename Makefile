@@ -1,4 +1,4 @@
-.PHONY: setup run test lint format build check doctor help
+.PHONY: setup run test lint format build check doctor help deploy-deck
 
 AES_LANGUAGE ?= python
 AES_LINT ?= ruff check
@@ -54,4 +54,7 @@ doctor:
 	@echo "Python: $$(python --version 2>&1 || echo not-found)"
 
 help:
-	@echo "AES Commands: make setup run test lint format build check doctor"
+	@echo "AES Commands: make setup run test lint format build check doctor deploy-deck"
+
+deploy-deck:
+	@./scripts/deploy_deck.sh

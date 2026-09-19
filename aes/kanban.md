@@ -11,7 +11,7 @@ current_ticket: T001
 
 | ID | Title | Priority | Status |
 |----|-------|----------|--------|
-| T001 | SSH connectivity & service scaffold on Steam Deck | high | pending |
+| T001 | SSH connectivity & service scaffold on Steam Deck | high | done |
 | T002 | MAVLink telemetry ingestion on Deck | high | pending |
 | T003 | Decision engine stub + safety gate | high | pending |
 | T004 | Client library / CLI to query Deck service | medium | pending |
@@ -22,10 +22,11 @@ current_ticket: T001
 
 | ID | Title | Status |
 |----|-------|--------|
-| T001 | SSH connectivity & service scaffold on Steam Deck | pending |
+| T001 | SSH connectivity & service scaffold on Steam Deck | done |
 
 ## Done
 
 | ID | Title | Completed |
 |----|-------|-----------|
+| T001 | SSH connectivity & service scaffold on Steam Deck | 2026-09-19 |
 | — | Project scaffold (AES, docs, git) | 2026-09-19 |

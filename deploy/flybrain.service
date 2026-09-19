@@ -1,0 +1,21 @@
+[Unit]
+Description=Deck Fly Brain — autonomous flight decision service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=/home/deck/.local/share/dfb
+ExecStart=/home/deck/.local/share/dfb/.venv/bin/uvicorn dfb.service:app --host 0.0.0.0 --port 8082
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=flybrain
+
+# Prevent Deck sleep while service runs
+ExecStartPre=/usr/bin/systemd-inhibit --what=handle-lid-switch:sleep --who="Fly Brain" --mode=block --why="Flight service must stay awake"
+
+[Install]
+WantedBy=default.target
