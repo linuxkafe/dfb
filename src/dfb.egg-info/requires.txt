@@ -2,3 +2,10 @@ fastapi
 uvicorn[standard]
 pymavlink
 pyyaml
+
+[monitor]
+psutil
+
+[test]
+requests
+psutil

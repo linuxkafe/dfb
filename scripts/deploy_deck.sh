@@ -4,6 +4,7 @@ set -euo pipefail
 DECK_HOST="deck@steamdeck"
 DECK_DEST="/home/deck/.local/share/dfb"
 SERVICE_NAME="flybrain"
+SERVICE_PORT=8082
 
 echo "🚀 Deploying to Steam Deck..."
 
@@ -24,8 +25,8 @@ rsync -avz --delete \
 
 rsync -avz ./pyproject.toml "$DECK_HOST:$DECK_DEST/"
 
-# Create venv and install deps on Deck
-ssh "$DECK_HOST" "cd $DECK_DEST && python3 -m venv .venv && .venv/bin/pip install -e . --quiet"
+# Create venv and install deps on Deck (including psutil for monitoring)
+ssh "$DECK_HOST" "cd $DECK_DEST && python3 -m venv .venv && .venv/bin/pip install -e . psutil --quiet"
 
 # Install systemd unit
 rsync -avz ./deploy/flybrain.service "$DECK_HOST:.config/systemd/user/"
@@ -34,4 +35,4 @@ rsync -avz ./deploy/flybrain.service "$DECK_HOST:.config/systemd/user/"
 ssh "$DECK_HOST" "systemctl --user daemon-reload && systemctl --user restart $SERVICE_NAME && systemctl --user enable $SERVICE_NAME"
 
 echo "✅ Deploy complete. Health check:"
-ssh "$DECK_HOST" "sleep 2 && curl -s http://localhost:8080/health"
+ssh "$DECK_HOST" "sleep 2 && curl -s http://localhost:$SERVICE_PORT/health"

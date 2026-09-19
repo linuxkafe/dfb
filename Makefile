@@ -1,4 +1,4 @@
-.PHONY: setup run test lint format build check doctor help deploy-deck
+.PHONY: setup run test lint format build check doctor help deploy-deck test-deck
 
 AES_LANGUAGE ?= python
 AES_LINT ?= ruff check
@@ -54,7 +54,27 @@ doctor:
 	@echo "Python: $$(python --version 2>&1 || echo not-found)"
 
 help:
-	@echo "AES Commands: make setup run test lint format build check doctor deploy-deck"
+	@echo "AES Commands: make setup run test lint format build check doctor deploy-deck test-deck"
 
 deploy-deck:
 	@./scripts/deploy_deck.sh
+
+# Integration test against Steam Deck (direct LAN access, no SSH tunnel)
+# SSH used only for deploying monitor script and collecting CSV
+test-deck:
+	@echo "🌐 Verifying direct LAN access to steamdeck:8082..."
+	@curl -sf http://steamdeck:8082/health >/dev/null || (echo "❌ Cannot reach steamdeck:8082" && exit 1)
+	@echo "✅ Service reachable via LAN"
+	@echo "📊 Deploying & starting resource monitor on Deck (via SSH)..."
+	@cd $(CURDIR) && .venv/bin/python scripts/run_monitor.py --duration 120 --output aes/verification/T002/raw &
+	@MONITOR_PID=$$!; \
+	echo "🧪 Running maze benchmark (20 episodes) via direct LAN..."; \
+	DECK_HOST=steamdeck SERVICE_PORT=8082 .venv/bin/pytest tests/deck/test_integration.py::TestMazeBenchmark -v -x; \
+	TEST_RESULT=$$?; \
+	echo "🛑 Stopping monitor..."; \
+	kill $$MONITOR_PID 2>/dev/null || true; \
+	wait $$MONITOR_PID 2>/dev/null || true; \
+	echo "📝 Generating summary..."; \
+	.venv/bin/python scripts/generate_summary.py aes/verification/T002/raw/resources.csv aes/verification/T002/summary.md; \
+	echo "✅ Test-deck complete"; \
+	exit $$TEST_RESULT

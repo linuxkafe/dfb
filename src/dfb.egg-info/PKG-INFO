@@ -8,6 +8,11 @@ Requires-Dist: fastapi
 Requires-Dist: uvicorn[standard]
 Requires-Dist: pymavlink
 Requires-Dist: pyyaml
+Provides-Extra: test
+Requires-Dist: requests; extra == "test"
+Requires-Dist: psutil; extra == "test"
+Provides-Extra: monitor
+Requires-Dist: psutil; extra == "monitor"
 
 # dfb — Deck Fly Brain
 
