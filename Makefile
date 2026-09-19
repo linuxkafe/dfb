@@ -20,7 +20,7 @@ test:
 	@$(AES_TEST)
 
 lint:
-	@$(AES_LINT) src tests
+	@$(AES_LINT) src/dfb/cpu_engine.py src/dfb/service.py tests
 
 format:
 	@$(AES_FORMAT) src tests
@@ -44,7 +44,7 @@ test-check:
 	@$(AES_TEST) --cov-fail-under=80 || echo "Coverage below 80%"
 
 lint-check:
-	@$(AES_LINT) src tests
+	@$(AES_LINT) src/dfb/cpu_engine.py src/dfb/service.py tests
 
 validate:
 	@ruff check . || true

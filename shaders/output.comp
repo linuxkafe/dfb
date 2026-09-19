@@ -1,0 +1,31 @@
+#version 450
+
+layout(local_size_x = 4) in;
+
+layout(set = 0, binding = 0) readonly buffer HiddenBuffer {
+    float hidden[];  // 64
+};
+
+layout(set = 0, binding = 1) readonly buffer Weight2Buffer {
+    float W2[];  // 4 * 64
+};
+
+layout(set = 0, binding = 2) readonly buffer Bias2Buffer {
+    float b2[];  // 4
+};
+
+layout(set = 0, binding = 3) buffer OutputBuffer {
+    float outputData[];  // 4
+};
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= 4u) return;
+
+    float sum = 0.0;
+    for (int j = 0; j < 64; j++) {
+        sum += hidden[j] * W2[idx * 64 + j];
+    }
+    sum += b2[idx];
+    outputData[idx] = sum;
+}

@@ -1,0 +1,31 @@
+#version 450
+
+layout(local_size_x = 64) in;
+
+layout(set = 0, binding = 0) readonly buffer InputBuffer {
+    float inputData[];
+};
+
+layout(set = 0, binding = 1) readonly buffer Weight1Buffer {
+    float W1[];  // 64 * 100
+};
+
+layout(set = 0, binding = 2) readonly buffer Bias1Buffer {
+    float b1[];  // 64
+};
+
+layout(set = 0, binding = 3) buffer HiddenBuffer {
+    float hidden[];  // 64
+};
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= 64u) return;
+
+    float sum = 0.0;
+    for (int i = 0; i < 100; i++) {
+        sum += inputData[i] * W1[idx * 100 + i];
+    }
+    sum += b1[idx];
+    hidden[idx] = max(sum, 0.0);  // ReLU
+}

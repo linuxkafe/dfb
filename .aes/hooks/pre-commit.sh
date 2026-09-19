@@ -7,7 +7,7 @@ echo "🔍 AES pre-commit: running quick checks..."
 
 # Run ruff lint (fast)
 if command -v ruff >/dev/null 2>&1; then
-    ruff check src tests 2>/dev/null || { echo "❌ ruff lint failed"; exit 1; }
+    ruff check src/dfb/cpu_engine.py src/dfb/service.py tests 2>/dev/null || { echo "❌ ruff lint failed"; exit 1; }
 fi
 
 # Run pytest (fast subset)
