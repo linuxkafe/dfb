@@ -3,6 +3,10 @@ uvicorn[standard]
 pymavlink
 pyyaml
 
+[cli]
+typer
+rich
+
 [monitor]
 psutil
 

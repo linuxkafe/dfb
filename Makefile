@@ -1,4 +1,4 @@
-.PHONY: setup run test lint format build check doctor help deploy-deck test-deck sim-export sim-loop sim-benchmark zink-test
+.PHONY: setup run test lint format build check doctor help deploy-deck test-deck sim-export sim-loop sim-benchmark zink-test install-cli
 
 AES_LANGUAGE ?= python
 AES_LINT ?= ruff check
@@ -54,7 +54,7 @@ doctor:
 	@echo "Python: $$(python --version 2>&1 || echo not-found)"
 
 help:
-	@echo "AES Commands: make setup run test lint format build check doctor deploy-deck test-deck sim-export sim-loop sim-benchmark zink-test"
+	@echo "AES Commands: make setup run test lint format build check doctor deploy-deck test-deck sim-export sim-loop sim-benchmark zink-test install-cli"
 
 deploy-deck:
 	@./scripts/deploy_deck.sh
@@ -95,3 +95,7 @@ sim-benchmark:
 zink-test:
 	@echo "🖥️  Testing Zink/OpenGL over Vulkan..."
 	@MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink .venv/bin/python -m sim.test_zink
+
+install-cli:
+	@echo "📦 Installing CLI with extras..."
+	@.venv/bin/pip install -e .[cli]

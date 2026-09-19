@@ -19,6 +19,9 @@ Requires-Dist: onnxruntime; extra == "sim"
 Requires-Dist: onnx; extra == "sim"
 Requires-Dist: torch; extra == "sim"
 Requires-Dist: numpy; extra == "sim"
+Provides-Extra: cli
+Requires-Dist: typer; extra == "cli"
+Requires-Dist: rich; extra == "cli"
 
 # dfb — Deck Fly Brain
 

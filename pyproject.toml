@@ -30,6 +30,13 @@ sim = [
     "torch",
     "numpy",
 ]
+cli = [
+    "typer",
+    "rich",
+]
+
+[project.scripts]
+dfb = "dfb.cli:app"
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "sim"]

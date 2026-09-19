@@ -1,0 +1,2 @@
+[console_scripts]
+dfb = dfb.cli:app
