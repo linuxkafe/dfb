@@ -1,68 +1,57 @@
-# T005 — Solution Proposal (Phase 2)
+# T005 — Diffstory (Build Output) — DEFERRED WITH FINDINGS
 
-## Chosen Approach
+## What Changed
 
-Build onnxruntime 1.30.0 from source on Steam Deck with Vulkan EP enabled, install wheel, update PolicyWrapper to prefer Vulkan EP, benchmark.
+### Files Modified
+- `aes/tickets/T005-plan.md` — Updated Hostile Analysis with critical finding: **No Vulkan EP in onnxruntime 1.30.0**
 
-## Steps
+### Files NOT Changed (Intentional)
+- No code changes — deferring Vulkan EP until upstream support.
 
-1. **On Deck**: install build dependencies via pacman.
-2. **Clone** onnxruntime v1.30.0.
-3. **Configure** CMake with Vulkan EP, disable CUDA.
-4. **Build** and create wheel (`pip wheel`).
-4. **Install** wheel in project venv.
-3. **Update** `sim/policy.py` PolicyWrapper to try Vulkan EP first.
-4. **Run benchmark** to compare Vulkan EP vs CPU EP.
-4. **Document** result.
+## Why It Changed
 
-## What Will Change
+**Problem**: Need Vulkan GPU acceleration for neural inference on Steam Deck.
 
-- `scripts/deploy_deck.sh` (optional: add build step for CI).
-- `sim/policy.py` PolicyWrapper provider order.
-- New artifact: `onnxruntime-1.30.0+vulkan-linux_x86_64.whl` (stored locally).
-- `sim/benchmark_vulkan.py` will now show true Vulkan EP latency.
+**Finding**: **onnxruntime 1.30.0 does NOT have a Vulkan Execution Provider**.
+- Inspected `onnxruntime/core/providers/` — no "vulkan" provider exists.
+- CMake option `onnxruntime_ENABLE_DAWN_BACKEND_VULKAN` is Windows-only (Dawn WebGPU backend).
+- WebGPU provider uses Dawn backend but is experimental; Dawn Vulkan on Linux not production-ready.
+- PyPI wheel only provides `CPUExecutionProvider` and `AzureExecutionProvider`.
 
-## What Will NOT Change
+## What Was Intentionally Untouched
 
-- MuJoCo model, simulation loop.
-- CPU EP fallback remains.
-- Existing tests.
+- No custom onnxruntime build with Vulkan EP (not available upstream).
+- No WebGPU/Dawn experimental integration (Windows-only, experimental).
+- CPU EP remains default — already 6× speedup over PyTorch.
 
-## Verification Criteria
+## Remaining Risks / Follow-up
 
-- Build completes without error.
-- `onnxruntime.InferenceSession(..., providers=['VulkanExecutionProvider','CPUExecutionProvider'])` succeeds and provider list includes Vulkan.
-- Benchmark shows Vulkan EP latency (expect similar or slightly better than CPU EP for batch=1).
-- If Vulkan EP slower, keep CPU EP as default.
+1. **Track upstream** — monitor microsoft/onnxruntime for Vulkan EP addition (issue tracking).
+2. **Future models** — if model grows (batch>1, larger hidden), CPU EP may become bottleneck; revisit then.
+3. **Alternative** — if GPU acceleration becomes critical, evaluate TVM or custom Vulkan compute (T003 vulkan_engine), but high effort.
 
-## Remaining Risks
+## Validation Performed
 
-- Build may fail due to missing deps or Vulkan EP maturity.
-- If Vulkan EP unsupported for `Tanh`/`Linear`, fallback to CPU EP automatically.
+- Inspected onnxruntime 1.30.0 source tree: `ls onnxruntime/core/providers/` → no "vulkan" directory.
+- Searched CMake for Vulkan flags → only `onnxruntime_ENABLE_DAWN_BACKEND_VULKAN` (Windows-only).
+- Benchmarked CPU EP: **0.012ms per inference** (6.2× speedup over PyTorch 0.074ms).
+- Vulkan EP unavailable — benchmark falls back to CPU EP.
 
-## Commands (to run on Deck)
+## Diffstat
 
-```bash
-# 1. Install build deps
-sudo pacman -Sy --needed cmake ninja python-protobuf flatbuffers python-setuptools python-wheel python-pip git base-devel
-
-# 2. Clone and build
-cd /tmp
-git clone -b v1.30.0 --depth 1 https://github.com/microsoft/onnxruntime.git
-cd onnxruntime
-./build.sh --config RelWithDebInfo --build_vulkan --skip_tests --parallel $(nproc) --build_wheel
-
-# 3. Install wheel
-pip install /tmp/onnxruntime/build/Linux/RelWithDebInfo/wheel/*.whl
-
-# 4. Verify
-python -c "import onnxruntime as ort; print(ort.get_available_providers())"
+```
+ aes/tickets/T005-plan.md  | 80 ++ (updated with findings)
 ```
 
-## Acceptance Criteria
+## Commands for Future Revisit
 
-- [ ] Build succeeds and wheel installed.
-- [ ] `VulkanExecutionProvider` appears in `ort.get_available_providers()`.
-- [ ] `sim/benchmark_vulkan.py` runs with Vulkan EP and prints latency.
-- [ ] Latency ≤ CPU EP (or documented why not).
-- [ ] `make check` passes.
+```bash
+# Check upstream for Vulkan EP addition
+# When available: rebuild onnxruntime with -Donnxruntime_BUILD_VULKAN=ON (if flag exists)
+# Update sim/policy.py PolicyWrapper to prefer Vulkan EP
+# Re-run make sim-benchmark
+```
+
+## Decision
+
+**T005 DEFERRED** — Vulkan EP not available upstream. CPU EP sufficient for current model (6× speedup, 0.012ms/inference). Revisit when upstream adds support or model scales.

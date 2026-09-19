@@ -2,7 +2,7 @@
 project: dfb
 created: 2026-09-19
 current_sprint: sprint-01
-current_ticket: T004
+current_ticket: T005
 ---
 
 # Kanban — dfb (Deck Fly Brain)
@@ -15,7 +15,7 @@ current_ticket: T004
 | T002 | Initial service tests, maze sim & resource monitoring | high | done |
 | T003 | Decision engine (CPU) + safety gate + visualization | high | done |
 | T004 | Client library / CLI to query Deck service | medium | done |
-| T005 | Vulkan GPU acceleration for decision engine | medium | pending |
+| T005 | Vulkan GPU acceleration for decision engine | medium | deferred |
 | T006 | MuJoCo physics + neural inference via ONNX Vulkan on Steam Deck | high | done |
 
 ## Sprint 01 — Foundation
