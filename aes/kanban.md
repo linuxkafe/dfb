@@ -2,7 +2,7 @@
 project: dfb
 created: 2026-09-19
 current_sprint: sprint-02
-current_ticket: T008
+current_ticket: T009
 ---
 
 # Kanban — dfb (Deck Fly Brain)
@@ -19,7 +19,7 @@ current_ticket: T008
 | T006 | MuJoCo physics + neural inference via ONNX Vulkan on Steam Deck | high | done |
 | T007 | MAVLink telemetry ingestion pipeline on Steam Deck | high | done |
 | T008 | Decision engine with real telemetry (state estimation + advisory) | high | done |
-| T009 | Service hardening: auto-restart, graceful degradation, health checks | medium | pending |
+| T009 | Service hardening: auto-restart, graceful degradation, health checks | medium | done |
 | T010 | CRSF/ELRS support for crossfire receivers | medium | pending |
 | T011 | gRPC API for lower-latency client-deck communication | medium | pending |
 | T012 | Safety certification artifacts (hazard analysis, test reports) | high | pending |
@@ -43,12 +43,13 @@ current_ticket: T008
 |----|-------|--------|
 | T007 | MAVLink telemetry ingestion pipeline on Steam Deck | done |
 | T008 | Decision engine with real telemetry (state estimation + advisory) | done |
-| T009 | Service hardening: auto-restart, graceful degradation, health checks | pending |
+| T009 | Service hardening: auto-restart, graceful degradation, health checks | done |
 
 ## Done
 
 | ID | Title | Completed |
 |----|-------|-----------|
+| T009 | Service hardening: auto-restart, graceful degradation, health checks | 2026-09-19 |
 | T008 | Decision engine with real telemetry (state estimation + advisory) | 2026-09-19 |
 | T007 | MAVLink telemetry ingestion pipeline on Steam Deck | 2026-09-19 |
 | T006 | MuJoCo physics + neural inference via ONNX Vulkan on Steam Deck | 2026-09-19 |

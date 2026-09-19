@@ -20,6 +20,11 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=flybrain
 
+# Resource limits for Steam Deck (8GB RAM, 4C/8T)
+MemoryMax=2G
+CPUQuota=200%
+MemoryHigh=1.5G
+
 # Prevent Deck sleep while service runs
 ExecStartPre=/usr/bin/systemd-inhibit --what=handle-lid-switch:sleep --who="Fly Brain" --mode=block --why="Flight service must stay awake"
 
