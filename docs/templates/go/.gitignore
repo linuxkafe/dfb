@@ -1,0 +1,10 @@
+# Go
+bin/
+vendor/
+*.test
+*.out
+.coverage/
+coverage.html
+.idea/
+.vscode/
+.DS_Store

@@ -1,0 +1,18 @@
+steps:
+  lint:
+    image: alpine:latest
+    commands:
+      - apk add make
+      - make lint
+
+  test:
+    image: alpine:latest
+    commands:
+      - apk add make
+      - make test
+
+  build:
+    image: alpine:latest
+    commands:
+      - apk add make
+      - make build

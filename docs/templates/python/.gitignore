@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+coverage.xml
+*.cover
+*.log
+.idea/
+.vscode/
+*.sqlite
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

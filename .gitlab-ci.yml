@@ -1,0 +1,21 @@
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  CI_DEBUG_TRACE: "false"
+
+lint:
+  stage: lint
+  script: make lint
+  allow_failure: true
+
+test:
+  stage: test
+  script: make test
+  coverage: '/^TOTAL\s+\d+\s+\d+\s+(\d+)%/'
+
+build:
+  stage: build
+  script: make build
