@@ -13,6 +13,12 @@ Requires-Dist: requests; extra == "test"
 Requires-Dist: psutil; extra == "test"
 Provides-Extra: monitor
 Requires-Dist: psutil; extra == "monitor"
+Provides-Extra: sim
+Requires-Dist: mujoco; extra == "sim"
+Requires-Dist: onnxruntime; extra == "sim"
+Requires-Dist: onnx; extra == "sim"
+Requires-Dist: torch; extra == "sim"
+Requires-Dist: numpy; extra == "sim"
 
 # dfb — Deck Fly Brain
 

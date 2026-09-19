@@ -9,7 +9,7 @@ SERVICE_PORT=8082
 echo "🚀 Deploying to Steam Deck..."
 
 # Ensure destination exists
-ssh "$DECK_HOST" "mkdir -p $DECK_DEST/src"
+ssh "$DECK_HOST" "mkdir -p $DECK_DEST/src $DECK_DEST/sim $DECK_DEST/shaders"
 
 # Sync source (excluding venv, __pycache__, .git)
 rsync -avz --delete \
@@ -23,7 +23,10 @@ rsync -avz --delete \
   --exclude='htmlcov' \
   ./src/ "$DECK_HOST:$DECK_DEST/src/"
 
+rsync -avz ./sim/ "$DECK_HOST:$DECK_DEST/sim/"
+rsync -avz ./shaders/ "$DECK_HOST:$DECK_DEST/shaders/"
 rsync -avz ./pyproject.toml "$DECK_HOST:$DECK_DEST/"
+rsync -avz ./Makefile "$DECK_HOST:$DECK_DEST/"
 
 # Create venv and install deps on Deck (including psutil for monitoring)
 ssh "$DECK_HOST" "cd $DECK_DEST && python3 -m venv .venv && .venv/bin/pip install -e . psutil --quiet"

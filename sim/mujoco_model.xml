@@ -1,0 +1,15 @@
+<mujoco model="pendulum">
+  <option timestep="0.01" gravity="0 0 -9.81"/>
+  <worldbody>
+    <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+    <geom type="plane" size="1 1 0.1" rgba=".9 .9 .9 1"/>
+    <body name="pendulum" pos="0 0 1">
+      <joint name="hinge" type="hinge" axis="0 1 0" pos="0 0 0"/>
+      <geom name="rod" type="capsule" fromto="0 0 0 0 0 -0.5" size="0.05" rgba="0 .8 .2 1"/>
+      <geom name="mass" type="sphere" size="0.1" pos="0 0 -0.5" rgba=".8 0 .2 1"/>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="torque" joint="hinge" ctrlrange="-1 1" gear="1"/>
+  </actuator>
+</mujoco>

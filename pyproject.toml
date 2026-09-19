@@ -23,9 +23,16 @@ test = [
 monitor = [
     "psutil",
 ]
+sim = [
+    "mujoco",
+    "onnxruntime",
+    "onnx",
+    "torch",
+    "numpy",
+]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "sim"]
 addopts = "--cov=src --cov-report=xml --cov-report=term"
 pythonpath = ["src"]
 

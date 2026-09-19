@@ -6,6 +6,13 @@ pyyaml
 [monitor]
 psutil
 
+[sim]
+mujoco
+onnxruntime
+onnx
+torch
+numpy
+
 [test]
 requests
 psutil
