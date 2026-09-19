@@ -107,11 +107,13 @@ class TestOverallHealth:
 
     @patch("src.dfb.health.check_cpu_engine")
     @patch("src.dfb.health.check_mavlink_link")
+    @patch("src.dfb.health.check_crsf_link")
     @patch("src.dfb.health.check_decision_engine")
-    def test_all_healthy(self, mock_decision, mock_mavlink, mock_cpu):
+    def test_all_healthy(self, mock_decision, mock_crsf, mock_mavlink, mock_cpu):
         """Test overall health when all components healthy."""
         mock_cpu.return_value = ComponentHealth("ok", {})
         mock_mavlink.return_value = ComponentHealth("ok", {})
+        mock_crsf.return_value = ComponentHealth("ok", {})
         mock_decision.return_value = ComponentHealth("ok", {})
 
         overall, components = get_overall_health()
@@ -120,11 +122,13 @@ class TestOverallHealth:
 
     @patch("src.dfb.health.check_cpu_engine")
     @patch("src.dfb.health.check_mavlink_link")
+    @patch("src.dfb.health.check_crsf_link")
     @patch("src.dfb.health.check_decision_engine")
-    def test_one_degraded(self, mock_decision, mock_mavlink, mock_cpu):
+    def test_one_degraded(self, mock_decision, mock_crsf, mock_mavlink, mock_cpu):
         """Test overall health when one component degraded."""
         mock_cpu.return_value = ComponentHealth("ok", {})
         mock_mavlink.return_value = ComponentHealth("degraded", {})
+        mock_crsf.return_value = ComponentHealth("ok", {})
         mock_decision.return_value = ComponentHealth("ok", {})
 
         overall, _ = get_overall_health()
@@ -132,11 +136,13 @@ class TestOverallHealth:
 
     @patch("src.dfb.health.check_cpu_engine")
     @patch("src.dfb.health.check_mavlink_link")
+    @patch("src.dfb.health.check_crsf_link")
     @patch("src.dfb.health.check_decision_engine")
-    def test_one_unhealthy(self, mock_decision, mock_mavlink, mock_cpu):
+    def test_one_unhealthy(self, mock_decision, mock_crsf, mock_mavlink, mock_cpu):
         """Test overall health when one component unhealthy."""
         mock_cpu.return_value = ComponentHealth("ok", {})
         mock_mavlink.return_value = ComponentHealth("unhealthy", {})
+        mock_crsf.return_value = ComponentHealth("ok", {})
         mock_decision.return_value = ComponentHealth("ok", {})
 
         overall, _ = get_overall_health()

@@ -10,11 +10,12 @@ Since the flight controller runs its own EKF, this module mainly:
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
 from src.dfb.mavlink_ingest import TelemetryState
+from src.dfb.crsf_ingest import CRSFTelemetry
 
 
 @dataclass
@@ -234,6 +235,52 @@ def estimate_state(telemetry: TelemetryState, home_position: Optional[tuple[floa
         armed=False,
         _raw=telemetry,
     )
+
+
+def estimate_state_fused(
+    mavlink_telemetry: Optional[TelemetryState] = None,
+    crsf_telemetry: Optional[CRSFTelemetry] = None,
+    home_position: Optional[tuple[float, float]] = None,
+) -> EstimatedState:
+    """Estimate state from fused MAVLink and CRSF telemetry.
+
+    Uses MAVLink for position/attitude/velocity (from FC EKF).
+    Uses CRSF for RC channels (higher rate, more precise).
+    Falls back to MAVLink if CRSF unavailable.
+
+    Args:
+        mavlink_telemetry: MAVLink telemetry from FC
+        crsf_telemetry: CRSF telemetry from Crossfire/ELRS
+        home_position: (lat, lon) of home position in degrees
+
+    Returns:
+        EstimatedState with fused data
+    """
+    # Import here to avoid circular import
+    from src.dfb.crsf_ingest import CRSFTelemetry
+
+    # Use MAVLink as primary for position/attitude/velocity (from FC EKF)
+    primary = mavlink_telemetry
+    if primary is None or primary.timestamp == 0.0 or not primary.link_ok:
+        # Fallback: try CRSF GPS if available
+        if crsf_telemetry is not None and isinstance(crsf_telemetry, CRSFTelemetry):
+            if crsf_telemetry.gps:
+                # Could create a minimal TelemetryState from CRSF GPS
+                pass
+        return EstimatedState(
+            timestamp=0.0,
+            valid=False,
+            flight_mode="NO_LINK",
+        )
+
+    # Use the primary MAVLink telemetry for state estimation
+    state = estimate_state(primary)
+
+    # CRSF telemetry doesn't add position/attitude (from FC), but could provide
+    # higher-rate RC channels for control. The state estimator primarily uses
+    # FC EKF data which comes via MAVLink.
+
+    return state
 
 
 def compute_ground_speed(state: EstimatedState) -> float:

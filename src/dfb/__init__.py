@@ -1,7 +1,14 @@
 """Deck Fly Brain — public API exports."""
 
+from src.dfb.crsf_ingest import (
+    CRSFTelemetry,
+    get_crsf_state,
+    start_crsf_task,
+    stop_crsf_task,
+)
 from src.dfb.mavlink_ingest import (
     TelemetryState,
+    detect_protocol,
     get_telemetry_state,
     start_mavlink_task,
     stop_mavlink_task,
@@ -9,6 +16,7 @@ from src.dfb.mavlink_ingest import (
 from src.dfb.state_estimator import (
     EstimatedState,
     estimate_state,
+    estimate_state_fused,
     bearing_to,
     distance_to,
 )
@@ -28,14 +36,21 @@ from src.dfb.advisor import (
 )
 
 __all__ = [
+    # CRSF
+    "CRSFTelemetry",
+    "get_crsf_state",
+    "start_crsf_task",
+    "stop_crsf_task",
     # MAVLink
     "TelemetryState",
+    "detect_protocol",
     "get_telemetry_state",
     "start_mavlink_task",
     "stop_mavlink_task",
     # State estimation
     "EstimatedState",
     "estimate_state",
+    "estimate_state_fused",
     "bearing_to",
     "distance_to",
     # Safety

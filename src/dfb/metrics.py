@@ -33,6 +33,43 @@ MAVLINK_LINK_STATUS = Gauge(
     'MAVLink link status (1=ok, 0=lost)'
 )
 
+# CRSF metrics
+CRSF_FRAMES_TOTAL = Counter(
+    'crsf_frames_total',
+    'Total CRSF frames received',
+    ['frame_type']
+)
+
+CRSF_CRC_ERRORS = Counter(
+    'crsf_crc_errors_total',
+    'Total CRSF CRC errors'
+)
+
+CRSF_MSG_RATE = Gauge(
+    'crsf_msg_rate_hz',
+    'CRSF message rate in Hz'
+)
+
+CRSF_LINK_STATUS = Gauge(
+    'crsf_link_status',
+    'CRSF link status (1=ok, 0=lost)'
+)
+
+CRSF_RSSI = Gauge(
+    'crsf_rssi_dbm',
+    'CRSF RSSI in dBm'
+)
+
+CRSF_LQ = Gauge(
+    'crsf_link_quality_percent',
+    'CRSF link quality percentage'
+)
+
+CRSF_SNR = Gauge(
+    'crsf_snr_db',
+    'CRSF SNR in dB'
+)
+
 # Decision metrics
 DECISION_LATENCY = Histogram(
     'decision_latency_seconds',
@@ -73,6 +110,41 @@ def update_mavlink_rate(rate_hz: float):
 def update_mavlink_link_status(ok: bool):
     """Update MAVLink link status gauge."""
     MAVLINK_LINK_STATUS.set(1 if ok else 0)
+
+
+def record_crsf_frame(frame_type: int):
+    """Record CRSF frame received."""
+    CRSF_FRAMES_TOTAL.labels(frame_type=str(frame_type)).inc()
+
+
+def record_crsf_crc_error():
+    """Record CRSF CRC error."""
+    CRSF_CRC_ERRORS.inc()
+
+
+def update_crsf_rate(rate_hz: float):
+    """Update CRSF message rate gauge."""
+    CRSF_MSG_RATE.set(rate_hz)
+
+
+def update_crsf_link_status(ok: bool):
+    """Update CRSF link status gauge."""
+    CRSF_LINK_STATUS.set(1 if ok else 0)
+
+
+def update_crsf_rssi(rssi: float):
+    """Update CRSF RSSI gauge."""
+    CRSF_RSSI.set(rssi)
+
+
+def update_crsf_lq(lq: float):
+    """Update CRSF link quality gauge."""
+    CRSF_LQ.set(lq)
+
+
+def update_crsf_snr(snr: float):
+    """Update CRSF SNR gauge."""
+    CRSF_SNR.set(snr)
 
 
 def record_decision(mode: str, action: str, latency: float):

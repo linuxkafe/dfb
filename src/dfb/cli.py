@@ -123,5 +123,16 @@ def verify_token(
     print_json(data=resp.__dict__)
 
 
+@app.command("telemetry")
+def telemetry(
+    host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
+    port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),
+):
+    """Get unified telemetry state (MAVLink + CRSF)."""
+    client = get_client(host, port)
+    resp = client.telemetry()
+    print_json(data=resp.__dict__)
+
+
 if __name__ == "__main__":
     app()

@@ -6,12 +6,15 @@ Wants=network-online.target
 [Service]
 Type=simple
 Environment=PYTHONUNBUFFERED=1
+Environment=TELEMETRY_PROTOCOL=auto
 Environment=MAVLINK_DEVICE=/dev/ttyACM0
 Environment=MAVLINK_BAUD=57600
 Environment=MAVLINK_SOURCE_SYSTEM=255
 Environment=MAVLINK_SOURCE_COMPONENT=190
 Environment=MAVLINK_TARGET_SYSTEM=1
 Environment=MAVLINK_TARGET_COMPONENT=1
+Environment=CRSF_DEVICE=/dev/ttyACM1
+Environment=CRSF_BAUD=420000
 WorkingDirectory=/home/deck/.local/share/dfb
 ExecStart=/home/deck/.local/share/dfb/.venv/bin/uvicorn dfb.service:app --host 0.0.0.0 --port 8082
 Restart=on-failure

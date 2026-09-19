@@ -72,6 +72,50 @@ class TelemetryDecideResponse:
 
 
 @dataclass
+class CRSFTelemetryResponse:
+    timestamp: float
+    link_ok: bool
+    rc_channels: List[float]
+    rssi: Optional[float] = None
+    lq: Optional[float] = None
+    snr: Optional[float] = None
+    rf_mode: Optional[int] = None
+    voltage: Optional[float] = None
+    current: Optional[float] = None
+    capacity: Optional[float] = None
+    gps: Optional[Dict[str, Any]] = None
+    message_counts: Dict[str, int] = None  # type: ignore[assignment]
+
+
+@dataclass
+class MAVLinkTelemetryResponse:
+    timestamp: float
+    link_ok: bool
+    position: Dict[str, float]
+    attitude: Dict[str, float]
+    velocity: Dict[str, float]
+    battery: Dict[str, float]
+    rc_channels: List[float]
+    message_counts: Dict[str, int]
+    flight_mode: str
+    armed: bool
+
+
+@dataclass
+class FusedTelemetryResponse:
+    rc_channels: List[float]
+    timestamp: float
+
+
+@dataclass
+class TelemetryResponse:
+    primary_source: str
+    mavlink: Optional[MAVLinkTelemetryResponse] = None
+    crsf: Optional[CRSFTelemetryResponse] = None
+    fused: Optional[FusedTelemetryResponse] = None
+
+
+@dataclass
 class TokenResponse:
     token: str
     expires_in: float
@@ -125,6 +169,58 @@ class DeckClient:
     def version(self) -> VersionResponse:
         data = self._get("/version")
         return VersionResponse(version=data["version"])
+
+    def telemetry(self) -> TelemetryResponse:
+        """Get unified telemetry state (MAVLink + CRSF)."""
+        data = self._get("/telemetry")
+        mavlink = None
+        if data.get("mavlink"):
+            m = data["mavlink"]
+            mavlink = MAVLinkTelemetryResponse(
+                timestamp=m["timestamp"],
+                link_ok=m["link_ok"],
+                position=m["position"],
+                attitude=m["attitude"],
+                velocity=m["velocity"],
+                battery=m["battery"],
+                rc_channels=m["rc_channels"],
+                message_counts=m["message_counts"],
+                flight_mode=m["flight_mode"],
+                armed=m["armed"],
+            )
+
+        crsf = None
+        if data.get("crsf"):
+            c = data["crsf"]
+            crsf = CRSFTelemetryResponse(
+                timestamp=c["timestamp"],
+                link_ok=c["link_ok"],
+                rc_channels=c["rc_channels"],
+                rssi=c.get("rssi"),
+                lq=c.get("lq"),
+                snr=c.get("snr"),
+                rf_mode=c.get("rf_mode"),
+                voltage=c.get("voltage"),
+                current=c.get("current"),
+                capacity=c.get("capacity"),
+                gps=c.get("gps"),
+                message_counts=c["message_counts"],
+            )
+
+        fused = None
+        if data.get("fused"):
+            f = data["fused"]
+            fused = FusedTelemetryResponse(
+                rc_channels=f["rc_channels"],
+                timestamp=f["timestamp"],
+            )
+
+        return TelemetryResponse(
+            primary_source=data["primary_source"],
+            mavlink=mavlink,
+            crsf=crsf,
+            fused=fused,
+        )
 
     def decide(
         self,

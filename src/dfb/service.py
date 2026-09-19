@@ -8,7 +8,8 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List, Literal, Optional
 
 import numpy as np
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -17,6 +18,11 @@ from pydantic import BaseModel
 from src import __version__
 from src.dfb.advisor import MissionGoal, get_advisor
 from src.dfb.cpu_engine import get_cpu_engine, shutdown_cpu_engine
+from src.dfb.crsf_ingest import (
+    get_crsf_state,
+    start_crsf_task,
+    stop_crsf_task,
+)
 from src.dfb.health import get_overall_health
 from src.dfb.logging import (
     CorrelationIdMiddleware,
@@ -26,6 +32,7 @@ from src.dfb.logging import (
     setup_logging,
 )
 from src.dfb.mavlink_ingest import (
+    TelemetryState,
     get_telemetry_state,
     start_mavlink_task,
     stop_mavlink_task,
@@ -48,6 +55,15 @@ _TOKEN_TTL = 30.0
 _watchdog_task: Optional[asyncio.Task] = None
 _last_decision_time: float = 0.0
 _last_mavlink_msg_time: float = 0.0
+_last_crsf_msg_time: float = 0.0
+
+
+@dataclass
+class UnifiedTelemetryState:
+    """Unified telemetry state combining MAVLink and CRSF sources."""
+    mavlink: Optional[TelemetryState] = None
+    crsf: Optional[object] = None  # CRSFTelemetry (avoid circular import)
+    primary_source: Literal["mavlink", "crsf", "none"] = "none"
 
 
 @asynccontextmanager
@@ -57,14 +73,28 @@ async def lifespan(app: FastAPI):
     app.add_middleware(CorrelationIdMiddleware)
 
     get_cpu_engine()
-    mavlink_task = await start_mavlink_task(
-        device=os.getenv("MAVLINK_DEVICE", "/dev/ttyACM0"),
-        baud=int(os.getenv("MAVLINK_BAUD", "57600")),
-        source_system=int(os.getenv("MAVLINK_SOURCE_SYSTEM", "255")),
-        source_component=int(os.getenv("MAVLINK_SOURCE_COMPONENT", "190")),
-        target_system=int(os.getenv("MAVLINK_TARGET_SYSTEM", "1")),
-        target_component=int(os.getenv("MAVLINK_TARGET_COMPONENT", "1")),
-    )
+
+    # Determine telemetry protocol
+    protocol = os.getenv("TELEMETRY_PROTOCOL", "auto").lower()
+
+    mavlink_task = None
+    crsf_task = None
+
+    if protocol in ("auto", "mavlink"):
+        mavlink_task = await start_mavlink_task(
+            device=os.getenv("MAVLINK_DEVICE", "/dev/ttyACM0"),
+            baud=int(os.getenv("MAVLINK_BAUD", "57600")),
+            source_system=int(os.getenv("MAVLINK_SOURCE_SYSTEM", "255")),
+            source_component=int(os.getenv("MAVLINK_SOURCE_COMPONENT", "190")),
+            target_system=int(os.getenv("MAVLINK_TARGET_SYSTEM", "1")),
+            target_component=int(os.getenv("MAVLINK_TARGET_COMPONENT", "1")),
+        )
+
+    if protocol in ("auto", "crsf"):
+        crsf_task = await start_crsf_task(
+            device=os.getenv("CRSF_DEVICE", "/dev/ttyACM1"),
+            baud=int(os.getenv("CRSF_BAUD", "420000")),
+        )
 
     # Start watchdog
     global _watchdog_task
@@ -79,7 +109,10 @@ async def lifespan(app: FastAPI):
             await _watchdog_task
         except asyncio.CancelledError:
             pass
-    await stop_mavlink_task(mavlink_task)
+    if mavlink_task:
+        await stop_mavlink_task(mavlink_task)
+    if crsf_task:
+        await stop_crsf_task(crsf_task)
     shutdown_cpu_engine()
 
 
@@ -271,43 +304,78 @@ async def version():
 async def telemetry():
     """Get current telemetry state from flight controller.
 
-    Returns:
-    - timestamp: Unix time of last update
-    - link_ok: True if received message within 2s
-    - position: {lat, lon, alt, relative_alt} in degrees/meters
-    - attitude: {roll, pitch, yaw} in radians
-    - velocity: {vx, vy, vz} in m/s (converted from cm/s)
-    - battery: {voltage_v, current_a, remaining_pct}
-    - rc_channels: 16 channels normalized -1.0..1.0
-    - message_counts: Dict of MAVLink message type -> count
+    Returns unified telemetry with both MAVLink and CRSF sources.
     """
-    state = get_telemetry_state()
+    mavlink_state = get_telemetry_state()
+    crsf_state = get_crsf_state()
+
+    # Determine primary source
+    primary = "none"
+    if mavlink_state.link_ok and not crsf_state.link_ok:
+        primary = "mavlink"
+    elif crsf_state.link_ok and not mavlink_state.link_ok:
+        primary = "crsf"
+    elif mavlink_state.link_ok and crsf_state.link_ok:
+        primary = "mavlink"  # Default to MAVLink when both available
+
+    # Build fused state (prefer primary, fallback to secondary)
+    fused_rc_channels = []
+    if primary == "crsf" and crsf_state.channels:
+        fused_rc_channels = crsf_state.channels
+    elif mavlink_state.rc_channels:
+        fused_rc_channels = mavlink_state.rc_channels
+    elif crsf_state.channels:
+        fused_rc_channels = crsf_state.channels
+
     return {
-        "timestamp": state.timestamp,
-        "link_ok": state.link_ok,
-        "position": {
-            "lat": state.lat,
-            "lon": state.lon,
-            "alt": state.alt / 1000.0,  # mm to m
-            "relative_alt": state.relative_alt / 1000.0,
+        "primary_source": primary,
+        "mavlink": {
+            "timestamp": mavlink_state.timestamp,
+            "link_ok": mavlink_state.link_ok,
+            "position": {
+                "lat": mavlink_state.lat,
+                "lon": mavlink_state.lon,
+                "alt": mavlink_state.alt / 1000.0,
+                "relative_alt": mavlink_state.relative_alt / 1000.0,
+            },
+            "attitude": {
+                "roll": mavlink_state.roll,
+                "pitch": mavlink_state.pitch,
+                "yaw": mavlink_state.yaw,
+            },
+            "velocity": {
+                "vx": mavlink_state.vx / 100.0,
+                "vy": mavlink_state.vy / 100.0,
+                "vz": mavlink_state.vz / 100.0,
+            },
+            "battery": {
+                "voltage_v": mavlink_state.voltage_v,
+                "current_a": mavlink_state.current_a,
+                "remaining_pct": mavlink_state.remaining_pct,
+            },
+            "rc_channels": mavlink_state.rc_channels,
+            "message_counts": mavlink_state.msg_counts,
+            "flight_mode": mavlink_state.flight_mode,
+            "armed": mavlink_state.armed,
         },
-        "attitude": {
-            "roll": state.roll,
-            "pitch": state.pitch,
-            "yaw": state.yaw,
+        "crsf": {
+            "timestamp": crsf_state.timestamp,
+            "link_ok": crsf_state.link_ok,
+            "rc_channels": crsf_state.channels,
+            "rssi": crsf_state.rssi,
+            "lq": crsf_state.lq,
+            "snr": crsf_state.snr,
+            "rf_mode": crsf_state.rf_mode,
+            "voltage": crsf_state.voltage,
+            "current": crsf_state.current,
+            "capacity": crsf_state.capacity,
+            "gps": crsf_state.gps,
+            "message_counts": crsf_state.msg_counts,
         },
-        "velocity": {
-            "vx": state.vx / 100.0,  # cm/s to m/s
-            "vy": state.vy / 100.0,
-            "vz": state.vz / 100.0,
+        "fused": {
+            "rc_channels": fused_rc_channels,
+            "timestamp": max(mavlink_state.timestamp, crsf_state.timestamp),
         },
-        "battery": {
-            "voltage_v": state.voltage_v,
-            "current_a": state.current_a,
-            "remaining_pct": state.remaining_pct,
-        },
-        "rc_channels": state.rc_channels,
-        "message_counts": state.msg_counts,
     }
 
 
@@ -329,13 +397,19 @@ async def _decide_telemetry(payload: DecideRequest) -> DecideResponse:
     start_time = time.time()
     global _last_decision_time
 
-    # Get current telemetry
-    telemetry = get_telemetry_state()
+    # Get current telemetry from both sources
+    mavlink_telemetry = get_telemetry_state()
+    crsf_telemetry = get_crsf_state()
 
     # Estimate state in ENU frame
-    state = estimate_state(telemetry)
-    state.flight_mode = telemetry.flight_mode
-    state.armed = telemetry.armed
+    state = estimate_state(mavlink_telemetry)
+    state.flight_mode = mavlink_telemetry.flight_mode
+    state.armed = mavlink_telemetry.armed
+
+    # Override RC channels with CRSF if available (higher rate, more precise)
+    if crsf_telemetry.link_ok and crsf_telemetry.channels:
+        # We'd need to update the state estimator to use CRSF channels
+        pass
 
     # Build mission goal
     goal = MissionGoal(

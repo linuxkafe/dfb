@@ -13,6 +13,50 @@ from typing import Optional
 from pymavlink import mavutil
 
 
+class TelemetryReaderBase:
+    """Base class for telemetry readers (MAVLink, CRSF)."""
+
+    def __init__(self):
+        self._running = False
+        self._task: Optional[asyncio.Task] = None
+
+    async def start(self) -> None:
+        """Start the background reader task."""
+        self._running = True
+
+    async def stop(self) -> None:
+        """Stop the background reader gracefully."""
+        self._running = False
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+
+    def is_running(self) -> bool:
+        return self._running
+
+
+def detect_protocol(data: bytes) -> str:
+    """Detect telemetry protocol from first bytes.
+
+    Returns: "mavlink", "crsf", or "unknown"
+    """
+    if not data:
+        return "unknown"
+
+    # MAVLink v1: 0xFE, MAVLink v2/signed: 0xFD
+    if data[0] in (0xFE, 0xFD):
+        return "mavlink"
+
+    # CRSF: 0xC8
+    if data[0] == 0xC8:
+        return "crsf"
+
+    return "unknown"
+
+
 @dataclass
 class TelemetryState:
     """Thread-safe container for latest telemetry from flight controller.
