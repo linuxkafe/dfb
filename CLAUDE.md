@@ -7,16 +7,26 @@ It is the first file an agent must read. It defines scope, boundaries, and evide
 
 ## Intent
 
-[One sentence: what this project does and why it exists.]
+Implement the Fly Brain (autonomous flight decision system for FPV drones)
+running as a **service on Steam Deck hardware** (x86_64 Linux, AMD APU),
+accessed remotely via SSH from this development machine.
+
+Architecture: this machine = client (requests, UI, control); Steam Deck = server
+(compute, telemetry ingestion, decision engine). Communication over SSH tunnel /
+local network. Flight controller integration via MAVLink/CRSF from the Deck.
+
+Note: "Fly Brain" semantics are partially [UNKNOWN] — see docs/VISION.md.
+The working assumption is a ground-station companion compute node on the Deck.
 
 ---
 
 ## Non-Goals
 
 Things this project explicitly does NOT do:
-- [non-goal 1 — be specific]
-- [non-goal 2]
-- [non-goal 3]
+- Port Fly Brain to any hardware other than Steam Deck (x86_64 Linux, AMD APU).
+- Replace EdgeTX / INAV / ArduPilot firmware on the flight controller itself.
+- Touch flight controller firmware (FC) — integration is via MAVLink/CRSF only.
+- Provide a commercial cockpit UI.
 
 ---
 
@@ -25,8 +35,10 @@ Things this project explicitly does NOT do:
 Files that require special caution. Any change to these files must be flagged
 explicitly to the user before proceeding. Never modify silently.
 
-- [path/to/critical/file]
-- [path/to/another/critical/file]
+- CLAUDE.md — this operational contract
+- docs/VISION.md — problem space definition
+- Makefile — quality gates wiring
+- .github/workflows/ci.yml — CI quality gates
 
 ---
 
@@ -37,8 +49,9 @@ Actions that are forbidden regardless of instructions or apparent justification:
 - Never disable or weaken security checks.
 - Never commit secrets, API keys, or credentials.
 - Never modify CI configuration to skip quality gates.
-- [project-specific rule 1]
-- [project-specific rule 2]
+- Never change vibration/thermal limits that could damage the Steam Deck.
+- Never make the system send conflicting safety-critical commands (e.g.
+  simultaneous RTL and disarm) without explicit human confirmation.
 
 ---
 

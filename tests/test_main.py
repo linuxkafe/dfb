@@ -13,4 +13,5 @@ def test_main_output(capsys):
 def test_version():
     """Test version is defined."""
     from src import __version__
+
     assert __version__ == "0.1.0"

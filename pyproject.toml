@@ -3,9 +3,17 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "aes-project"
+name = "dfb"
 version = "0.1.0"
-description = "AES-managed Python project"
+description = "Deck Fly Brain — autonomous flight decision service for Steam Deck"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pymavlink",
+    "pyyaml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
