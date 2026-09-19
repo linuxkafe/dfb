@@ -47,6 +47,11 @@ class TelemetryState:
     # RC channels (normalized -1.0..1.0)
     rc_channels: list[float] = field(default_factory=lambda: [0.0] * 16)
 
+    # Flight mode from HEARTBEAT
+    flight_mode: str = "UNKNOWN"
+    armed: bool = False
+    autopilot: int = 0              # MAV_AUTOPILOT enum
+
     # Message counts for diagnostics
     msg_counts: dict[str, int] = field(default_factory=dict)
 
@@ -81,6 +86,35 @@ class MavlinkReader:
         self._max_backoff = 30.0
         self._link_timeout = 2.0  # seconds before link_ok = False
 
+    def _map_flight_mode(self, base_mode: int, custom_mode: int, autopilot: int) -> str:
+        """Map MAVLink base_mode + custom_mode to standard mode string."""
+        # ArduPilot modes
+        ardupilot_modes = {
+            0: "STABILIZE", 1: "ACRO", 2: "ALT_HOLD", 3: "AUTO",
+            4: "GUIDED", 5: "LOITER", 6: "RTL", 7: "CIRCLE",
+            9: "LAND", 10: "DRIFT", 11: "SPORT", 13: "DODGE",
+            14: "GUIDED_NOGPS", 15: "SMART_RTL", 16: "FLOWHOLD",
+            17: "FOLLOW", 18: "ZIGZAG", 19: "SYSTEMID",
+            20: "AUTOTUNE", 21: "POSHOLD", 22: "BRAKE",
+            23: "THROW", 24: "AVOID_ADSB", 25: "GUIDED_SLOW",
+        }
+
+        # PX4 modes (simplified)
+        px4_modes = {
+            1: "MANUAL", 2: "ALTCTL", 3: "POSCTL", 4: "AUTO_MISSION",
+            5: "AUTO_LOITER", 6: "AUTO_RTL", 7: "ACRO", 8: "OFFBOARD",
+            9: "STABILIZED", 10: "RATTITUDE", 11: "AUTO_TAKEOFF",
+            12: "AUTO_LAND", 13: "AUTO_FOLLOW", 14: "AUTO_PRECLAND",
+        }
+
+        if autopilot == 3:  # ArduPilot
+            return ardupilot_modes.get(custom_mode, f"AP_MODE_{custom_mode}")
+        elif autopilot == 6:  # PX4
+            main_mode = custom_mode & 0xFF
+            return px4_modes.get(main_mode, f"PX4_MODE_{main_mode}")
+        else:
+            return f"MODE_{custom_mode}"
+
     def _make_connection(self) -> mavutil.mavlink_connection:
         """Create MAVLink connection (serial or UDP)."""
         if self.device.startswith("udp:") or self.device.startswith("tcp:"):
@@ -111,8 +145,10 @@ class MavlinkReader:
             self._state.link_ok = True
 
             if msg_type == "HEARTBEAT":
-                # Could extract mode, armed status, etc.
-                pass
+                # Extract flight mode and armed status
+                self._state.armed = bool(msg.base_mode & 0x80)  # MAV_MODE_FLAG_SAFETY_ARMED
+                self._state.autopilot = msg.autopilot
+                self._state.flight_mode = self._map_flight_mode(msg.base_mode, msg.custom_mode, msg.autopilot)
 
             elif msg_type == "ATTITUDE":
                 self._state.roll = msg.roll
@@ -238,6 +274,9 @@ class MavlinkReader:
                 current_a=self._state.current_a,
                 remaining_pct=self._state.remaining_pct,
                 rc_channels=self._state.rc_channels.copy(),
+                flight_mode=self._state.flight_mode,
+                armed=self._state.armed,
+                autopilot=self._state.autopilot,
                 msg_counts=self._state.msg_counts.copy(),
             )
 

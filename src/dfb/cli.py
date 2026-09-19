@@ -50,7 +50,7 @@ def decide(
     host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
     port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),
 ):
-    """Ask the service for a decision given a maze state."""
+    """Ask the service for a decision given a maze state (legacy mode)."""
     client = get_client(host, port)
     try:
         state_dict = json.loads(state)
@@ -61,6 +61,26 @@ def decide(
         position=state_dict["position"],
         grid=state_dict["grid"],
         exit=state_dict["exit"],
+    )
+    print_json(data=resp.__dict__)
+
+
+@app.command("decide-telemetry")
+def decide_telemetry(
+    target_lat: Optional[float] = typer.Option(None, "--lat", help="Target latitude (degrees)"),
+    target_lon: Optional[float] = typer.Option(None, "--lon", help="Target longitude (degrees)"),
+    target_alt: Optional[float] = typer.Option(None, "--alt", help="Target altitude AGL (meters)"),
+    target_speed: Optional[float] = typer.Option(None, "--speed", help="Target ground speed (m/s)"),
+    host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
+    port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),
+):
+    """Ask the service for a telemetry-aware advisory decision."""
+    client = get_client(host, port)
+    resp = client.decide_telemetry(
+        target_lat=target_lat,
+        target_lon=target_lon,
+        target_alt=target_alt,
+        target_speed=target_speed,
     )
     print_json(data=resp.__dict__)
 

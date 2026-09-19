@@ -36,6 +36,9 @@ cli = [
     "typer",
     "rich",
 ]
+filter = [
+    "filterpy",
+]
 
 [project.scripts]
 dfb = "dfb.cli:app"

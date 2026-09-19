@@ -26,6 +26,52 @@ class DecideResponse:
 
 
 @dataclass
+class AdvisoryResponse:
+    heading_deg: float
+    altitude_m: float
+    speed_mps: float
+    mode: str
+    reason: str
+    distance_to_target: Optional[float] = None
+    bearing_to_target: Optional[float] = None
+
+
+@dataclass
+class SafetyViolationResponse:
+    category: str
+    message: str
+    severity: str
+    value: float
+    limit: float
+
+
+@dataclass
+class SafetyStatusResponse:
+    safe: bool
+    violations: List[SafetyViolationResponse]
+    warnings: List[SafetyViolationResponse]
+    battery_pct: float
+    link_ok: bool
+    link_age_s: float
+    gps_fix_type: int
+    hdop: float
+    vdop: float
+    ground_speed: float
+    climb_rate: float
+    alt_agl: float
+
+
+@dataclass
+class TelemetryDecideResponse:
+    advisory: Optional[AdvisoryResponse] = None
+    safety: Optional[SafetyStatusResponse] = None
+    # Legacy fields
+    action: Optional[str] = None
+    confidence: Optional[float] = None
+    logits: Optional[List[float]] = None
+
+
+@dataclass
 class TokenResponse:
     token: str
     expires_in: float
@@ -91,6 +137,62 @@ class DeckClient:
         return DecideResponse(
             action=data["action"],
             confidence=data["confidence"],
+            logits=data.get("logits"),
+        )
+
+    def decide_telemetry(
+        self,
+        target_lat: Optional[float] = None,
+        target_lon: Optional[float] = None,
+        target_alt: Optional[float] = None,
+        target_speed: Optional[float] = None,
+    ) -> TelemetryDecideResponse:
+        """Request telemetry-aware advisory decision."""
+        payload = {
+            "use_telemetry": True,
+            "target_lat": target_lat,
+            "target_lon": target_lon,
+            "target_alt": target_alt,
+            "target_speed": target_speed,
+        }
+        data = self._post("/decide", payload)
+
+        advisory = None
+        if data.get("advisory"):
+            adv = data["advisory"]
+            advisory = AdvisoryResponse(
+                heading_deg=adv["heading_deg"],
+                altitude_m=adv["altitude_m"],
+                speed_mps=adv["speed_mps"],
+                mode=adv["mode"],
+                reason=adv["reason"],
+                distance_to_target=adv.get("distance_to_target"),
+                bearing_to_target=adv.get("bearing_to_target"),
+            )
+
+        safety = None
+        if data.get("safety"):
+            s = data["safety"]
+            safety = SafetyStatusResponse(
+                safe=s["safe"],
+                violations=[SafetyViolationResponse(**v) for v in s["violations"]],
+                warnings=[SafetyViolationResponse(**v) for v in s["warnings"]],
+                battery_pct=s["battery_pct"],
+                link_ok=s["link_ok"],
+                link_age_s=s["link_age_s"],
+                gps_fix_type=s["gps_fix_type"],
+                hdop=s["hdop"],
+                vdop=s["vdop"],
+                ground_speed=s["ground_speed"],
+                climb_rate=s["climb_rate"],
+                alt_agl=s["alt_agl"],
+            )
+
+        return TelemetryDecideResponse(
+            advisory=advisory,
+            safety=safety,
+            action=data.get("action"),
+            confidence=data.get("confidence"),
             logits=data.get("logits"),
         )
 

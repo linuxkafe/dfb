@@ -14,12 +14,14 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from src import __version__
+from src.dfb.advisor import MissionGoal, get_advisor
 from src.dfb.cpu_engine import get_cpu_engine, shutdown_cpu_engine
 from src.dfb.mavlink_ingest import (
     get_telemetry_state,
     start_mavlink_task,
     stop_mavlink_task,
 )
+from src.dfb.state_estimator import estimate_state
 
 # Confirmation token store (in-memory, single-use, 30s TTL)
 _confirmation_tokens: dict[str, float] = {}
@@ -48,15 +50,53 @@ app = FastAPI(title="Deck Fly Brain", version=__version__, lifespan=lifespan)
 
 
 class DecideRequest(BaseModel):
-    position: List[int]
-    grid: List[List[int]]
-    exit: List[int]
+    # Legacy maze mode (backward compatible)
+    position: Optional[List[int]] = None
+    grid: Optional[List[List[int]]] = None
+    exit: Optional[List[int]] = None
+
+    # New telemetry-aware mode
+    use_telemetry: bool = False
+    target_lat: Optional[float] = None
+    target_lon: Optional[float] = None
+    target_alt: Optional[float] = None
+    target_speed: Optional[float] = None
+
+
+class AdvisoryResponse(BaseModel):
+    heading_deg: float
+    altitude_m: float
+    speed_mps: float
+    mode: str
+    reason: str
+    distance_to_target: Optional[float] = None
+    bearing_to_target: Optional[float] = None
+
+
+class SafetyStatusResponse(BaseModel):
+    safe: bool
+    violations: List[dict] = []
+    warnings: List[dict] = []
+    battery_pct: float
+    link_ok: bool
+    link_age_s: float
+    gps_fix_type: int
+    hdop: float
+    vdop: float
+    ground_speed: float
+    climb_rate: float
+    alt_agl: float
 
 
 class DecideResponse(BaseModel):
-    action: str
-    confidence: float
+    # Legacy fields (maze mode)
+    action: Optional[str] = None
+    confidence: Optional[float] = None
     logits: Optional[List[float]] = None
+
+    # New telemetry-aware fields
+    advisory: Optional[AdvisoryResponse] = None
+    safety: Optional[SafetyStatusResponse] = None
 
 
 class CommandRequest(BaseModel):
@@ -145,16 +185,88 @@ async def telemetry():
 
 @app.post("/decide", response_model=DecideResponse)
 async def decide(payload: DecideRequest):
+    """Decision endpoint with two modes:
+    1. Legacy maze mode.
+    2. Telemetry-aware mode.
+    Legacy returns discrete action (UP/DOWN/LEFT/RIGHT).
+    Telemetry returns continuous advisory (heading, altitude, speed).
     """
-    Decision endpoint using CPU engine (numpy MLP).
-    Input: {"position": [x,y], "grid": [[0,1,...]], "exit": [ex,ey]}
-    Output: {"action": "UP|DOWN|LEFT|RIGHT", "confidence": float, "logits": [...]}
-    """
+    if payload.use_telemetry:
+        return await _decide_telemetry(payload)
+    return await _decide_maze(payload)
+
+
+async def _decide_telemetry(payload: DecideRequest) -> DecideResponse:
+    """Telemetry-aware decision using real flight state."""
+    # Get current telemetry
+    telemetry = get_telemetry_state()
+
+    # Estimate state in ENU frame
+    state = estimate_state(telemetry)
+    state.flight_mode = telemetry.flight_mode
+    state.armed = telemetry.armed
+
+    # Build mission goal
+    goal = MissionGoal(
+        target_lat=payload.target_lat,
+        target_lon=payload.target_lon,
+        target_alt=payload.target_alt or 50.0,
+        target_speed=payload.target_speed or 10.0,
+    )
+
+    # Get advisor and compute advisory
+    advisor = get_advisor()
+    advisory = advisor.advise(state, goal)
+
+    # Convert to response models
+    advisory_resp = AdvisoryResponse(
+        heading_deg=advisory.heading_deg,
+        altitude_m=advisory.altitude_m,
+        speed_mps=advisory.speed_mps,
+        mode=advisory.mode,
+        reason=advisory.reason,
+        distance_to_target=advisory.distance_to_target,
+        bearing_to_target=advisory.bearing_to_target,
+    )
+
+    safety_resp = None
+    if advisory.safety:
+        s = advisory.safety
+        violations = [
+            {"category": v.category, "message": v.message, "severity": v.severity,
+             "value": v.value, "limit": v.limit} for v in s.violations
+        ]
+        warnings = [
+            {"category": v.category, "message": v.message, "severity": v.severity,
+             "value": v.value, "limit": v.limit} for v in s.warnings
+        ]
+        safety_resp = SafetyStatusResponse(
+            safe=s.safe,
+            violations=violations,
+            warnings=warnings,
+            battery_pct=s.battery_pct,
+            link_ok=s.link_ok,
+            link_age_s=s.link_age_s,
+            gps_fix_type=s.gps_fix_type,
+            hdop=s.hdop,
+            vdop=s.vdop,
+            ground_speed=s.ground_speed,
+            climb_rate=s.climb_rate,
+            alt_agl=s.alt_agl,
+        )
+
+    return DecideResponse(
+        advisory=advisory_resp,
+        safety=safety_resp,
+    )
+
+
+async def _decide_maze(payload: DecideRequest) -> DecideResponse:
+    """Legacy maze decision using CPU engine (numpy MLP)."""
     engine = get_cpu_engine()
 
     # Prepare input: flatten grid (10x10=100); engine expects 100.
-    # For now, use just the grid flattened.
-    grid = payload.grid
+    grid = payload.grid or []
     flat_grid = [cell for row in grid for cell in row]
 
     # Ensure 100 elements
