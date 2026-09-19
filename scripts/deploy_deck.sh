@@ -31,6 +31,9 @@ rsync -avz ./Makefile "$DECK_HOST:$DECK_DEST/"
 # Create venv and install deps on Deck (including psutil for monitoring)
 ssh "$DECK_HOST" "cd $DECK_DEST && python3 -m venv .venv && .venv/bin/pip install -e . psutil --quiet"
 
+# Ensure deck user has serial port access (for MAVLink telemetry)
+ssh "$DECK_HOST" "groups deck | grep -q dialout || echo 'WARNING: deck user not in dialout group. Run: sudo usermod -a -G dialout deck'"
+
 # Install systemd unit
 rsync -avz ./deploy/flybrain.service "$DECK_HOST:.config/systemd/user/"
 

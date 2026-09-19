@@ -1,4 +1,9 @@
-"""Fly Brain service for Steam Deck — health + version + decide + safety gate."""
+"""Fly Brain service for Steam Deck — health, version, decide, safety gate, telemetry.
+
+Endpoints: /health, /version, /decide, /telemetry,
+           /confirm/issue, /command, /confirm/verify.
+"""
+import os
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -10,6 +15,11 @@ from pydantic import BaseModel
 
 from src import __version__
 from src.dfb.cpu_engine import get_cpu_engine, shutdown_cpu_engine
+from src.dfb.mavlink_ingest import (
+    get_telemetry_state,
+    start_mavlink_task,
+    stop_mavlink_task,
+)
 
 # Confirmation token store (in-memory, single-use, 30s TTL)
 _confirmation_tokens: dict[str, float] = {}
@@ -20,8 +30,17 @@ _TOKEN_TTL = 30.0
 async def lifespan(app: FastAPI):
     # Startup
     get_cpu_engine()
+    mavlink_task = await start_mavlink_task(
+        device=os.getenv("MAVLINK_DEVICE", "/dev/ttyACM0"),
+        baud=int(os.getenv("MAVLINK_BAUD", "57600")),
+        source_system=int(os.getenv("MAVLINK_SOURCE_SYSTEM", "255")),
+        source_component=int(os.getenv("MAVLINK_SOURCE_COMPONENT", "190")),
+        target_system=int(os.getenv("MAVLINK_TARGET_SYSTEM", "1")),
+        target_component=int(os.getenv("MAVLINK_TARGET_COMPONENT", "1")),
+    )
     yield
     # Shutdown
+    await stop_mavlink_task(mavlink_task)
     shutdown_cpu_engine()
 
 
@@ -78,6 +97,50 @@ async def health():
 @app.get("/version")
 async def version():
     return {"version": __version__}
+
+
+@app.get("/telemetry")
+async def telemetry():
+    """Get current telemetry state from flight controller.
+
+    Returns:
+    - timestamp: Unix time of last update
+    - link_ok: True if received message within 2s
+    - position: {lat, lon, alt, relative_alt} in degrees/meters
+    - attitude: {roll, pitch, yaw} in radians
+    - velocity: {vx, vy, vz} in m/s (converted from cm/s)
+    - battery: {voltage_v, current_a, remaining_pct}
+    - rc_channels: 16 channels normalized -1.0..1.0
+    - message_counts: Dict of MAVLink message type -> count
+    """
+    state = get_telemetry_state()
+    return {
+        "timestamp": state.timestamp,
+        "link_ok": state.link_ok,
+        "position": {
+            "lat": state.lat,
+            "lon": state.lon,
+            "alt": state.alt / 1000.0,  # mm to m
+            "relative_alt": state.relative_alt / 1000.0,
+        },
+        "attitude": {
+            "roll": state.roll,
+            "pitch": state.pitch,
+            "yaw": state.yaw,
+        },
+        "velocity": {
+            "vx": state.vx / 100.0,  # cm/s to m/s
+            "vy": state.vy / 100.0,
+            "vz": state.vz / 100.0,
+        },
+        "battery": {
+            "voltage_v": state.voltage_v,
+            "current_a": state.current_a,
+            "remaining_pct": state.remaining_pct,
+        },
+        "rc_channels": state.rc_channels,
+        "message_counts": state.msg_counts,
+    }
 
 
 @app.post("/decide", response_model=DecideResponse)

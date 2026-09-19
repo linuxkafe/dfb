@@ -12,6 +12,7 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "pymavlink",
+    "pyserial",
     "pyyaml",
 ]
 
@@ -19,6 +20,7 @@ dependencies = [
 test = [
     "requests",
     "psutil",
+    "pytest-asyncio",
 ]
 monitor = [
     "psutil",
