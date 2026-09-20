@@ -25,6 +25,9 @@ test = [
     "requests",
     "psutil",
     "pytest-asyncio",
+    "pytest",
+    "pytest-cov",
+    "ruff",
 ]
 monitor = [
     "psutil",
