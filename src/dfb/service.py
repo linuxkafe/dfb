@@ -23,6 +23,7 @@ from src.dfb.crsf_ingest import (
     start_crsf_task,
     stop_crsf_task,
 )
+from src.dfb.grpc_server import run_grpc_server
 from src.dfb.health import get_overall_health
 from src.dfb.logging import (
     CorrelationIdMiddleware,
@@ -79,6 +80,7 @@ async def lifespan(app: FastAPI):
 
     mavlink_task = None
     crsf_task = None
+    grpc_server_task = None
 
     if protocol in ("auto", "mavlink"):
         mavlink_task = await start_mavlink_task(
@@ -95,6 +97,16 @@ async def lifespan(app: FastAPI):
             device=os.getenv("CRSF_DEVICE", "/dev/ttyACM1"),
             baud=int(os.getenv("CRSF_BAUD", "420000")),
         )
+
+    # Start gRPC server
+    grpc_port = int(os.getenv("GRPC_PORT", "8083"))
+    enable_tls = os.getenv("GRPC_TLS", "false").lower() == "true"
+    cert_file = os.getenv("GRPC_CERT_FILE")
+    key_file = os.getenv("GRPC_KEY_FILE")
+
+    grpc_server_task = asyncio.create_task(
+        run_grpc_server(grpc_port, enable_tls, cert_file, key_file)
+    )
 
     # Start watchdog
     global _watchdog_task
@@ -113,6 +125,12 @@ async def lifespan(app: FastAPI):
         await stop_mavlink_task(mavlink_task)
     if crsf_task:
         await stop_crsf_task(crsf_task)
+    if grpc_server_task:
+        grpc_server_task.cancel()
+        try:
+            await grpc_server_task
+        except asyncio.CancelledError:
+            pass
     shutdown_cpu_engine()
 
 

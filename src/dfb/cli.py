@@ -6,7 +6,7 @@ import typer
 import numpy as np
 from rich import print_json
 
-from .client import DeckClient, create_client_from_env
+from .client import HttpDeckClient, GrpcDeckClient, create_client_from_env
 
 
 app = typer.Typer(help="Deck Fly Brain CLI")
@@ -15,11 +15,13 @@ app = typer.Typer(help="Deck Fly Brain CLI")
 def get_client(
     host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
     port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),
-) -> "DeckClient":
-    from .client import DeckClient
+    transport: str = typer.Option("http", "--transport", "-t", help="Transport protocol: http or grpc"),
+) -> "HttpDeckClient | GrpcDeckClient":
     host = host or "steamdeck"
-    port = port or 8082
-    return DeckClient(host=host, port=port)
+    port = port or (8083 if transport == "grpc" else 8082)
+    if transport == "grpc":
+        return GrpcDeckClient(host=host, port=port)
+    return HttpDeckClient(host=host, port=port)
 
 
 @app.command()
@@ -49,9 +51,13 @@ def decide(
     state: str = typer.Argument(..., help="JSON state: {\"position\":[x,y],\"grid\":[[...]],\"exit\":[ex,ey]}"),
     host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
     port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),
+    transport: str = typer.Option("http", "--transport", "-t", help="Transport protocol: http or grpc"),
 ):
-    """Ask the service for a decision given a maze state (legacy mode)."""
-    client = get_client(host, port)
+    """Ask the service for a decision given a maze state (legacy mode, HTTP only)."""
+    client = get_client(host, port, transport)
+    if not isinstance(client, HttpDeckClient):
+        typer.echo("Legacy maze mode only supports HTTP transport", err=True)
+        raise typer.Exit(1)
     try:
         state_dict = json.loads(state)
     except json.JSONDecodeError as e:

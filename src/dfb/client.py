@@ -2,9 +2,17 @@
 import os
 import json
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 import requests
 import numpy as np
+
+if TYPE_CHECKING:
+    import grpc
+else:
+    try:
+        import grpc
+    except ImportError:
+        grpc = None
 
 
 @dataclass
@@ -133,7 +141,225 @@ class VerifyResponse:
     expires_in: float
 
 
-class DeckClient:
+class GrpcDeckClient:
+    """gRPC client for Deck Fly Brain service."""
+
+    def __init__(
+        self,
+        host: str = "steamdeck",
+        port: int = 8083,
+        timeout: float = 5.0,
+        tls: bool = False,
+        cert_file: Optional[str] = None,
+        key_file: Optional[str] = None,
+    ):
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.tls = tls
+        self.cert_file = cert_file
+        self.key_file = key_file
+        self._channel: Optional["grpc.aio.Channel"] = None
+        self._stub = None
+
+    async def _get_channel(self) -> "grpc.aio.Channel":
+        if self._channel is None:
+            if self.tls:
+                if self.cert_file and self.key_file:
+                    with open(self.cert_file, "rb") as f:
+                        cert = f.read()
+                    with open(self.key_file, "rb") as f:
+                        key = f.read()
+                    credentials = grpc.ssl_channel_credentials(
+                        root_certificates=cert,
+                        private_key=key,
+                    )
+                else:
+                    credentials = grpc.ssl_channel_credentials()
+                self._channel = grpc.aio.secure_channel(
+                    f"{self.host}:{self.port}", credentials
+                )
+            else:
+                self._channel = grpc.aio.insecure_channel(
+                    f"{self.host}:{self.port}"
+                )
+        return self._channel
+
+    async def _get_stub(self):
+        if self._stub is None:
+            channel = await self._get_channel()
+            from src.dfb.grpc import flybrain_pb2_grpc
+            self._stub = flybrain_pb2_grpc.FlyBrainServiceStub(channel)
+        return self._stub
+
+    async def close(self):
+        if self._channel:
+            await self._channel.close()
+            self._channel = None
+            self._stub = None
+
+    async def health(self) -> HealthResponse:
+        stub = await self._get_stub()
+        from src.dfb.grpc import flybrain_pb2
+        response = await stub.GetHealth(flybrain_pb2.HealthRequest())
+        return HealthResponse(status=response.status, version=response.version)
+
+    async def version(self) -> VersionResponse:
+        stub = await self._get_stub()
+        from src.dfb.grpc import flybrain_pb2
+        response = await stub.GetVersion(flybrain_pb2.VersionRequest())
+        return VersionResponse(version=response.version)
+
+    async def telemetry(self) -> TelemetryResponse:
+        stub = await self._get_stub()
+        from src.dfb.grpc import flybrain_pb2
+        response = await stub.GetTelemetry(flybrain_pb2.TelemetryRequest())
+        return self._convert_telemetry(response)
+
+    def _convert_telemetry(self, response) -> TelemetryResponse:
+        mavlink = None
+        if response.mavlink:
+            m = response.mavlink
+            mavlink = MAVLinkTelemetryResponse(
+                timestamp=m.timestamp,
+                link_ok=m.link_ok,
+                position=m.position,
+                attitude=m.attitude,
+                velocity=m.velocity,
+                battery=m.battery,
+                rc_channels=list(m.rc_channels),
+                message_counts=dict(m.message_counts),
+                flight_mode=m.flight_mode,
+                armed=m.armed,
+            )
+
+        crsf = None
+        if response.crsf:
+            c = response.crsf
+            crsf = CRSFTelemetryResponse(
+                timestamp=c.timestamp,
+                link_ok=c.link_ok,
+                rc_channels=list(c.rc_channels),
+                rssi=c.get("rssi"),
+                lq=c.get("lq"),
+                snr=c.get("snr"),
+                rf_mode=c.get("rf_mode"),
+                voltage=c.get("voltage"),
+                current=c.get("current"),
+                capacity=c.get("capacity"),
+                gps=c.get("gps"),
+                message_counts=dict(c.message_counts),
+            )
+
+        fused = None
+        if response.fused:
+            f = response.fused
+            fused = FusedTelemetryResponse(
+                rc_channels=list(f.rc_channels),
+                timestamp=f.timestamp,
+            )
+
+        return TelemetryResponse(
+            primary_source=response.source,
+            mavlink=mavlink,
+            crsf=crsf,
+            fused=fused,
+        )
+
+    async def decide_telemetry(
+        self,
+        target_lat: Optional[float] = None,
+        target_lon: Optional[float] = None,
+        target_alt: Optional[float] = None,
+        target_speed: Optional[float] = None,
+    ) -> TelemetryDecideResponse:
+        """Request telemetry-aware advisory decision via gRPC."""
+        stub = await self._get_stub()
+        from src.dfb.grpc import flybrain_pb2
+
+        request = flybrain_pb2.DecideRequest(
+            use_telemetry=True,
+            target_lat=target_lat or 0.0,
+            target_lon=target_lon or 0.0,
+            target_alt=target_alt or 50.0,
+            target_speed=target_speed or 10.0,
+        )
+        response = await stub.Decide(request)
+
+        advisory = None
+        if response.advisory:
+            adv = response.advisory
+            advisory = AdvisoryResponse(
+                heading_deg=adv.heading_deg,
+                altitude_m=adv.altitude_m,
+                speed_mps=adv.speed_mps,
+                mode=adv.mode,
+                reason=adv.reason,
+                distance_to_target=adv.distance_to_target,
+                bearing_to_target=adv.bearing_to_target,
+            )
+
+        safety = None
+        if response.safety:
+            s = response.safety
+            safety = SafetyStatusResponse(
+                safe=s.safe,
+                violations=[SafetyViolationResponse(**vars(v)) for v in s.violations],
+                warnings=[SafetyViolationResponse(**vars(v)) for v in s.warnings],
+                battery_pct=s.battery_pct,
+                link_ok=s.link_ok,
+                link_age_s=s.link_age_s,
+                gps_fix_type=s.gps_fix_type,
+                hdop=s.hdop,
+                vdop=s.vdop,
+                ground_speed=s.ground_speed,
+                climb_rate=s.climb_rate,
+                alt_agl=s.alt_agl,
+            )
+
+        return TelemetryDecideResponse(
+            advisory=advisory,
+            safety=safety,
+            action=response.action,
+            confidence=response.confidence,
+            logits=list(response.logits),
+        )
+
+    async def issue_token(self) -> TokenResponse:
+        stub = await self._get_stub()
+        from src.dfb.grpc import flybrain_pb2
+        response = await stub.IssueToken(flybrain_pb2.TokenRequest())
+        return TokenResponse(token=response.token, expires_in=response.expires_in)
+
+    async def command(
+        self,
+        action: str,
+        params: Optional[Dict[str, Any]] = None,
+        token: Optional[str] = None,
+    ) -> CommandResponse:
+        stub = await self._get_stub()
+        from src.dfb.grpc import flybrain_pb2
+        request = flybrain_pb2.CommandRequest(
+            action=action,
+            params=params or {},
+        )
+        response = await stub.SendCommand(request)
+        return CommandResponse(success=response.success, message=response.message)
+
+    async def verify_token(self, token: str) -> VerifyResponse:
+        stub = await self._get_stub()
+        from src.dfb.grpc import flybrain_pb2
+        response = await stub.VerifyToken(flybrain_pb2.VerifyRequest(token=token))
+        return VerifyResponse(valid=response.valid, expires_in=response.expires_in)
+
+    async def close(self):
+        if self._channel:
+            await self._channel.close()
+            self._channel = None
+            self._stub = None
+
+
+class HttpDeckClient:
     """Client for Deck Fly Brain REST API."""
 
     def __init__(
@@ -314,8 +540,8 @@ class DeckClient:
         return VerifyResponse(valid=data["valid"], expires_in=data["expires_in"])
 
 
-def create_client_from_env() -> DeckClient:
+def create_client_from_env() -> HttpDeckClient:
     """Create client using DFB_HOST/DFB_PORT env vars."""
     host = os.getenv("DFB_HOST", "steamdeck")
     port = int(os.getenv("DFB_PORT", "8082"))
-    return DeckClient(host=host, port=port)
+    return HttpDeckClient(host=host, port=port)

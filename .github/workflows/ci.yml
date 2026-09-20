@@ -24,6 +24,9 @@ jobs:
       - name: Quality gates
         run: make check
 
+      - name: Safety certification gate
+        run: make safety-check
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         if: always()

@@ -2,8 +2,8 @@
 ticket: T012
 phase: plan
 status: done
-created: 2026-09-19
-tier: standard
+created: 2026-09-20
+tier: heavy
 requires:
   - aes/kanban.md
   - aes/tickets/T012-safety-certification.md
@@ -23,6 +23,8 @@ blocked_by: ''
 - MAVLink telemetry ingestion + CRSF/ELRS (T010) → state estimation → advisor
 - Safety envelope: geofence, altitude, battery, link, GPS, speed, attitude
 - Watchdog monitors MAVLink/CRSF links and decision engine
+- Resource limits: MemoryMax=2G, CPUQuota=200%
+- Graceful degradation: service stays up on link loss
 
 **Existing safety mechanisms:**
 - Token confirmation gate (single-use, 30s TTL) for `/command`
@@ -128,7 +130,7 @@ TE1: Unintended command sent to FC
 | REQ-17 | SSH keys only | H3 | deploy test | Pass |
 | REQ-20 | Service auto-restart | H2, H4 | test_health.py | Pass |
 
-### 5. Safety Case (GSN) — `docs/safety/case.gsn` (or Markdown)
+### 5. Safety Case (GSN) — `docs/safety/case.md` (or Markdown)
 ```
 Goal: Residual risk acceptable for experimental flight
   Strategy: Defense in depth
@@ -159,7 +161,7 @@ Goal: Residual risk acceptable for experimental flight
 3. **Battery critical**: Auto-RTL at 20%, land at 10%
 4. **Geofence breach**: Advisory RTL → pilot manual
 5. **Kill switch**: FC hardware disarm (external)
-6. **Steam Deck failure**: FC failsafe (RTL/land)
+5. **Steam Deck failure**: FC failsafe (RTL/land)
 
 ## Affected Files
 
@@ -185,6 +187,106 @@ Goal: Residual risk acceptable for experimental flight
 - `make safety-check` - validates traceability matrix completeness
 - CI gate: all hazard mitigations have at least one test
 - CI gate: safety case goals all have evidence
+
+## Verification Criteria
+
+- [ ] SSA documents system, environment, safety requirements
+- [ ] FHA identifies ≥10 failure conditions with severity classification
+- [ ] FTA analyzes ≥4 top events with minimal cut sets
+- [ ] Traceability matrix covers all REQs → Hazards → Tests
+- [ ] Safety Case (GSN) argues residual risk acceptable
+- [ ] Operational Limits documented with configurable parameters
+- [ ] Emergency Procedures cover 6 scenarios
+- [ ] All artifacts reviewed and approved
+- [ ] CI gate: `make safety-check` passes
+
+## Estimation
+
+- Complexity: **medium** (4–10h)
+- Risk: **medium** (documentation quality, traceability maintenance)
+- Blocking dependencies: **T007, T008, T009** (system must be functional to analyze)
+
+## Two-Agent Analysis (Heavy Ticket)
+
+### Critic Phase
+
+## Como se fosse uma criança
+The safety documents are like a rulebook that says "here's what could go wrong and how we prevent it." But rulebooks can be wrong, outdated, or ignored. Just because we write down "we check the battery" doesn't mean the code actually checks it before every flight.
+
+## Como se fosse um especialista
+This is a lightweight safety case for an experimental advisory system. Key challenge: the artifacts must accurately reflect the implemented system, not an idealized version. The traceability matrix is the linchpin - if it rots, the whole case rots.
+
+[FAILURE MODE 1]
+Mechanism: Documentation drift - artifacts describe v0.1 but code is at v0.5 with different safety envelope defaults.
+
+[FAILURE MODE 2]
+Mechanism: False confidence - artifacts claim "safety envelope prevents all hazardous advisories" but code only checks geofence/altitude, not attitude limits.
+
+[FAILURE MODE 3]
+Mechanism: Traceability gaps - new hazard added in code review but not traced to FHA/FTA/test, creating silent gap.
+
+[ASSUMPTION]
+If false: Artifacts become decorative rather than functional safety evidence.
+
+[ALTERNATIVE FRAMING]
+Instead of static docs, generate safety artifacts from code annotations (like Rust's `#[safety]` attributes) so they can't drift.
+
+## Porquê? ×5
+1. Why formal artifacts? → Because experimental flight needs evidence of due diligence
+2. Why ARP4761 not DO-178C? → Advisory-only system doesn't need code certification
+3. Why FHA+FTA not STPA? → Team familiarity; FHA/FTA standard for aviation
+4. Why GSN not CAE? → GSN more visual, easier to review
+5. Why traceability matrix? → Required by any credible safety standard
+
+What are we optimizing that we shouldn't be?
+Optimizing for document completeness rather than artifact-code alignment.
+
+### Implementor Phase
+
+## Como se fosse uma criança
+The safety documents are like a map that shows where the monsters live and where the safe paths are. We need to make sure the map matches the territory, and update it when the territory changes.
+
+## Como se fosse um especialista
+Implement as living documents in Markdown with automated checks. The traceability matrix will be a Markdown table with CI validation. Safety case in GSN format using Mermaid diagrams.
+
+[ADDRESSING FAILURE MODE 1]
+Mechanism: Add `make safety-check` CI step that validates traceability matrix completeness and checks that every hazard has at least one test reference.
+
+[ADDRESSING FAILURE MODE 2]
+Mechanism: Safety envelope constants defined in single source (`safety_envelope.py:DEFAULT_SAFETY_CONFIG`), referenced by both code and FHA doc via include or generation.
+
+[ADDRESSING FAILURE MODE 3]
+Mechanism: Traceability matrix is the single source of truth; CI gate fails if any REQ lacks hazard link or any hazard lacks test.
+
+[ADDRESSING ASSUMPTION]
+Validation: CI gate `make safety-check` validates matrix completeness and cross-references.
+
+[ADDRESSING ALTERNATIVE FRAMING]
+Incorporation: Safety envelope constants are the single source of truth; docs reference them via `{% include %}` or similar.
+
+[SOLUTION PROPOSAL]
+Create 7 safety artifact files in `docs/safety/` with:
+1. SSA: system description, safety requirements, architecture
+2. FHA: table of ≥10 failure conditions with severity
+3. FTA: 4 top events with minimal cut sets
+4. Traceability: Markdown table REQ→Hazard→Test with CI validation
+5. Safety Case: GSN-style argument in Mermaid + Markdown
+6. Operational Limits: documented with config references
+7. Emergency Procedures: 6 scenarios with decision trees
+
+All artifacts in Markdown for version control, reviewable in PRs.
+
+## Porquê? ×5
+1. Why Markdown? → Version control, diffable, renderable in GitHub
+2. Why GSN? → Visual, structured, accepted in aviation
+3. Why Mermaid? → Diagrams in Markdown, version controlled
+4. Why CI validation? → Prevents drift, enforces traceability
+5. Why not Word/Doors? → Version control, diffable, free tooling
+
+What are we optimizing that we shouldn't be?
+Optimizing for document completeness rather than artifact-code alignment.
+
+---
 
 ## Verification Criteria
 

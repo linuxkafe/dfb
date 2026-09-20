@@ -1,5 +1,7 @@
 """Deck Fly Brain — public API exports."""
 
+__version__ = "0.1.0"
+
 from src.dfb.crsf_ingest import (
     CRSFTelemetry,
     get_crsf_state,

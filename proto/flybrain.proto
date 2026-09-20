@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+package flybrain;
+
+service FlyBrainService {
+  // Health and version
+  rpc GetHealth(HealthRequest) returns (HealthResponse);
+  rpc GetVersion(VersionRequest) returns (VersionResponse);
+
+  // Telemetry
+  rpc GetTelemetry(TelemetryRequest) returns (TelemetryResponse);
+  rpc GetTelemetryStream(TelemetryStreamRequest) returns (stream TelemetryResponse);
+
+  // Decision making
+  rpc Decide(DecideRequest) returns (DecideResponse);
+
+  // Safety token management
+  rpc IssueToken(TokenRequest) returns (TokenResponse);
+  rpc VerifyToken(VerifyRequest) returns (VerifyResponse);
+
+  // Commands
+  rpc SendCommand(CommandRequest) returns (CommandResponse);
+}
+
+// Health and Version
+message HealthRequest {}
+message HealthResponse {
+  string status = 1;
+  string version = 2;
+}
+
+message VersionRequest {}
+message VersionResponse {
+  string version = 1;
+}
+
+// Telemetry
+message TelemetryRequest {}
+
+message TelemetryResponse {
+  double timestamp = 1;
+  bool link_ok = 2;
+  string source = 3;  // "mavlink" | "crsf" | "fused"
+
+  // MAVLink telemetry
+  TelemetryMavlink mavlink = 4;
+
+  // CRSF telemetry
+  TelemetryCrsf crsf = 5;
+
+  // Fused data
+  TelemetryFused fused = 6;
+}
+
+message TelemetryStreamRequest {
+  int32 interval_ms = 1;  // Update interval in milliseconds (default 100ms, min 20ms)
+}
+
+message TelemetryMavlink {
+  double timestamp = 1;
+  bool link_ok = 2;
+  Position position = 3;
+  Attitude attitude = 4;
+  Velocity velocity = 5;
+  Battery battery = 6;
+  repeated float rc_channels = 7;
+  map<string, int32> message_counts = 8;
+  string flight_mode = 9;
+  bool armed = 10;
+}
+
+message TelemetryCrsf {
+  double timestamp = 1;
+  bool link_ok = 2;
+  repeated float rc_channels = 3;
+  int32 rssi = 4;
+  int32 lq = 5;
+  int32 snr = 6;
+  int32 rf_mode = 7;
+  double voltage = 8;
+  double current = 9;
+  double capacity = 10;
+  GPS gps = 11;
+  map<string, int32> message_counts = 12;
+}
+
+message TelemetryFused {
+  repeated float rc_channels = 1;
+  double timestamp = 2;
+}
+
+message Position {
+  double lat = 1;
+  double lon = 2;
+  double alt = 3;
+  double relative_alt = 4;
+}
+
+message Attitude {
+  double roll = 1;
+  double pitch = 2;
+  double yaw = 3;
+}
+
+message Velocity {
+  double vx = 1;
+  double vy = 2;
+  double vz = 3;
+}
+
+message Battery {
+  double voltage_v = 1;
+  double current_a = 2;
+  double remaining_pct = 3;
+}
+
+message GPS {
+  double lat = 1;
+  double lon = 2;
+  double alt = 3;
+  double speed = 4;
+  int32 satellites = 5;
+}
+
+// Decision
+message DecideRequest {
+  // Telemetry-aware mode
+  bool use_telemetry = 1;
+  double target_lat = 2;
+  double target_lon = 3;
+  double target_alt = 4;
+  double target_speed = 5;
+
+  // Legacy maze mode (backward compatible)
+  repeated int32 position = 10;
+  repeated Int32List grid = 11;
+  repeated int32 exit = 12;
+}
+
+message Int32List {
+  repeated int32 values = 1;
+}
+
+message DecideResponse {
+  // Legacy maze mode
+  string action = 1;
+  double confidence = 2;
+  repeated float logits = 3;
+
+  // Telemetry-aware mode
+  Advisory advisory = 5;
+  SafetyStatus safety = 6;
+}
+
+message Advisory {
+  double heading_deg = 1;
+  double altitude_m = 2;
+  double speed_mps = 3;
+  string mode = 5;
+  string reason = 6;
+  double distance_to_target = 7;
+  double bearing_to_target = 8;
+}
+
+message SafetyStatus {
+  bool safe = 1;
+  repeated SafetyViolation violations = 2;
+  repeated SafetyViolation warnings = 3;
+  double battery_pct = 4;
+  bool link_ok = 5;
+  double link_age_s = 6;
+  int32 gps_fix_type = 7;
+  double hdop = 8;
+  double vdop = 9;
+  double ground_speed = 10;
+  double climb_rate = 11;
+  double alt_agl = 12;
+}
+
+message SafetyViolation {
+  string category = 1;
+  string message = 2;
+  string severity = 3;  // "CRITICAL" | "WARNING"
+  double value = 4;
+  double limit = 5;
+}
+
+// Token
+message TokenRequest {}
+message TokenResponse {
+  string token = 1;
+  double expires_in = 2;
+}
+
+message VerifyRequest {
+  string token = 1;
+}
+message VerifyResponse {
+  bool valid = 1;
+  double expires_in = 2;
+}
+
+// Command
+message CommandRequest {
+  string action = 1;
+  map<string, string> params = 2;
+}
+
+message CommandResponse {
+  bool success = 1;
+  string message = 2;
+}

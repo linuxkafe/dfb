@@ -1,8 +1,8 @@
 ---
 project: dfb
 created: 2026-09-19
-current_sprint: sprint-03
-current_ticket: T010
+current_sprint: sprint-04
+current_ticket: T013
 ---
 
 # Kanban — dfb (Deck Fly Brain)
@@ -21,8 +21,11 @@ current_ticket: T010
 | T008 | Decision engine with real telemetry (state estimation + advisory) | high | done |
 | T009 | Service hardening: auto-restart, graceful degradation, health checks | medium | done |
 | T010 | CRSF/ELRS support for crossfire receivers | medium | done |
-| T011 | gRPC API for lower-latency client-deck communication | medium | pending |
-| T012 | Safety certification artifacts (hazard analysis, test reports) | high | pending |
+| T011 | gRPC API for lower-latency client-deck communication | medium | done* |
+| T012 | Safety certification artifacts (hazard analysis, test reports) | high | done |
+| T013 | Close gRPC safety gate hole + add test evidence (gRPC/HTTP routes/CLI) | critical | in_progress |
+| T014 | Vulkan on Steam Deck — functional verification + crash fix (T005 un-defer) | critical | done |
+| T015 | Neural co-processor PoC: Ollama + CPU/Vulkan neural net on-deck | high | done |
 
 ## Sprint 01 — Foundation
 
@@ -52,14 +55,33 @@ current_ticket: T010
 | ID | Title | Status |
 |----|-------|--------|
 | T010 | CRSF/ELRS support for crossfire receivers | done |
-| T011 | gRPC API for lower-latency client-deck communication | planned |
-| T012 | Safety certification artifacts (hazard analysis, test reports) | planned |
+| T011 | gRPC API for lower-latency client-deck communication | done* |
+| T012 | Safety certification artifacts (hazard analysis, test reports) | done |
+
+\* T011 evidence gap (no committed code, no tests, unguarded command surface) tracked
+by T013. Retrospective: `aes/sprints/sprint-03.md`.
+
+## Sprint 04 — Safety Gate Closure & Evidence
+
+**Goal**: Close the gRPC safety-gate bypass, add real test evidence (gRPC, HTTP routes,
+CLI), clean repo hygiene. Per sprint-03 retrospective: *no ticket done without committed
+code + tests + passing gates.*
+
+| ID | Title | Status |
+|----|-------|--------|
+| T013 | Close gRPC safety gate hole + add test evidence (gRPC/HTTP routes/CLI) | in_progress |
+| T014 | Vulkan on Steam Deck — functional verification + crash fix (T005 un-defer) | done |
+| T015 | Neural co-processor PoC: Ollama + CPU/Vulkan neural net on-deck | done |
+
+Retrospective: `aes/sprints/sprint-04.md`
 
 ## Done
 
 | ID | Title | Completed |
 |----|-------|-----------|
 | T010 | CRSF/ELRS support for crossfire receivers | 2026-09-19 |
+| T011 | gRPC API for lower-latency client-deck communication | 2026-09-19 (evidence gap → T013) |
+| T012 | Safety certification artifacts (hazard analysis, test reports) | 2026-09-20 |
 | T009 | Service hardening: auto-restart, graceful degradation, health checks | 2026-09-19 |
 | T008 | Decision engine with real telemetry (state estimation + advisory) | 2026-09-19 |
 | T007 | MAVLink telemetry ingestion pipeline on Steam Deck | 2026-09-19 |

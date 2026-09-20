@@ -1,9 +1,9 @@
-"""Tests for DeckClient."""
+"""Tests for HttpDeckClient (HTTP)."""
 from unittest.mock import Mock
 
 import pytest
 
-from src.dfb.client import DeckClient, create_client_from_env
+from src.dfb.client import HttpDeckClient, create_client_from_env
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def test_health(mock_session):
     mock_resp.raise_for_status.return_value = None
     mock_session.get.return_value = mock_resp
 
-    client = DeckClient(session=mock_session)
+    client = HttpDeckClient(session=mock_session)
     resp = client.health()
     assert resp.status == "ok"
     assert resp.version == "0.1.0"
@@ -36,7 +36,7 @@ def test_decide(mock_session):
     mock_resp.raise_for_status.return_value = None
     mock_session.post.return_value = mock_resp
 
-    client = DeckClient(session=Mock())
+    client = HttpDeckClient(session=Mock())
     client.session = mock_session
     resp = client.decide(position=[0, 0], grid=[[0]*10 for _ in range(10)], exit=[9, 9])
     assert resp.action == "UP"
@@ -50,7 +50,7 @@ def test_issue_token(mock_session):
     mock_resp.raise_for_status.return_value = None
     mock_session.post.return_value = mock_resp
 
-    client = DeckClient(session=mock_session)
+    client = HttpDeckClient(session=mock_session)
     resp = client.issue_token()
     assert resp.token == "abc123"
     assert resp.expires_in == 30.0
@@ -63,7 +63,7 @@ def test_command_with_token():
     mock_resp.raise_for_status.return_value = None
     mock_session.post.return_value = mock_resp
 
-    client = DeckClient(session=mock_session)
+    client = HttpDeckClient(session=mock_session)
     resp = client.command(action="ARM", token="token123")
     assert resp.success is True
     assert resp.message == "OK"

@@ -11,21 +11,29 @@ from dataclasses import dataclass
 VK_API_VERSION_1_0 = 0  # Use 0 to let loader pick default
 VK_STRUCTURE_TYPE_APPLICATION_INFO = 0
 VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO = 1
-VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO = 3
-VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO = 4
-VK_STRUCTURE_TYPE_SUBMIT_INFO = 5
-VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO = 11
-VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO = 12
-VK_STRUCTURE_TYPE_FENCE_CREATE_INFO = 13
-VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO = 14
-VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO = 15
-VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO = 16
-VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO = 17
-VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO = 18
-VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET = 19
-VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO = 20
-VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO = 21
-VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO = 22
+VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO = 2
+VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO = 3
+VK_STRUCTURE_TYPE_SUBMIT_INFO = 4
+VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO = 5
+VK_STRUCTURE_TYPE_FENCE_CREATE_INFO = 8
+VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO = 12
+VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO = 16
+VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO = 18
+VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO = 28
+VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO = 29
+VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO = 30
+VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO = 31
+VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO = 32
+VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO = 33
+VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO = 34
+VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET = 35
+VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO = 39
+VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO = 40
+VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO = 42
+VK_STRUCTURE_TYPE_MEMORY_BARRIER = 46
+VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT = 0x00000020
+VK_ACCESS_SHADER_READ_BIT = 0x00000020
+VK_ACCESS_SHADER_WRITE_BIT = 0x00000040
 
 VK_QUEUE_COMPUTE_BIT = 0x00000002
 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT = 0x00000200
@@ -36,7 +44,7 @@ VK_MEMORY_PROPERTY_HOST_COHERENT_BIT = 0x00000002
 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT = 0x00000004
 VK_SHADER_STAGE_COMPUTE_BIT = 0x00000020
 VK_PIPELINE_BIND_POINT_COMPUTE = 0x00000001
-VK_DESCRIPTOR_TYPE_STORAGE_BUFFER = 0x00000005
+VK_DESCRIPTOR_TYPE_STORAGE_BUFFER = 0x00000007
 VK_COMMAND_BUFFER_LEVEL_PRIMARY = 0x00000000
 VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT = 0x00000002
 VK_FENCE_CREATE_SIGNALED_BIT = 0x00000001
@@ -129,11 +137,14 @@ def load_vulkan():
     lib.vkCmdBindPipeline.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_uint64]
     lib.vkCmdBindPipeline.restype = None
 
-    lib.vkCmdBindDescriptorSets.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_uint64, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint64), ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32)]
+    lib.vkCmdBindDescriptorSets.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_uint64, ctypes.c_uint32, ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint64), ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32)]
     lib.vkCmdBindDescriptorSets.restype = None
 
     lib.vkCmdDispatch.argtypes = [ctypes.c_uint64, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32]
     lib.vkCmdDispatch.restype = None
+
+    lib.vkCmdPipelineBarrier.argtypes = [ctypes.c_uint64, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32, ctypes.POINTER(VkMemoryBarrier), ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p]
+    lib.vkCmdPipelineBarrier.restype = None
 
     lib.vkBeginCommandBuffer.argtypes = [ctypes.c_uint64, ctypes.POINTER(VkCommandBufferBeginInfo)]
     lib.vkBeginCommandBuffer.restype = ctypes.c_int
@@ -430,6 +441,15 @@ class VkCommandBufferBeginInfo(ctypes.Structure):
     ]
 
 
+class VkMemoryBarrier(ctypes.Structure):
+    _fields_ = [
+        ("sType", ctypes.c_int),
+        ("pNext", ctypes.c_void_p),
+        ("srcAccessMask", ctypes.c_uint32),
+        ("dstAccessMask", ctypes.c_uint32),
+    ]
+
+
 class VkSubmitInfo(ctypes.Structure):
     _fields_ = [
         ("sType", ctypes.c_int),
@@ -444,12 +464,26 @@ class VkSubmitInfo(ctypes.Structure):
     ]
 
 
+class VkMemoryType(ctypes.Structure):
+    _fields_ = [
+        ("propertyFlags", ctypes.c_uint32),
+        ("heapIndex", ctypes.c_uint32),
+    ]
+
+
+class VkMemoryHeap(ctypes.Structure):
+    _fields_ = [
+        ("size", ctypes.c_uint64),
+        ("flags", ctypes.c_uint32),
+    ]
+
+
 class VkPhysicalDeviceMemoryProperties(ctypes.Structure):
     _fields_ = [
         ("memoryTypeCount", ctypes.c_uint32),
-        ("memoryTypes", ctypes.c_uint32 * 32),  # Actually VkMemoryType[32] but we only need propertyFlags
+        ("memoryTypes", VkMemoryType * 32),
         ("memoryHeapCount", ctypes.c_uint32),
-        ("memoryHeaps", ctypes.c_void_p * 16),
+        ("memoryHeaps", VkMemoryHeap * 16),
     ]
 
 
@@ -475,14 +509,14 @@ class VulkanEngine:
         self.command_pool = VK_NULL_HANDLE
         self.command_buffer = VK_NULL_HANDLE
         self.fence = VK_NULL_HANDLE
-        self.pipeline_layout = VK_NULL_HANDLE
-        self.hidden_pipeline = VK_NULL_HANDLE
-        self.output_pipeline = VK_NULL_HANDLE
-        self.hidden_shader_module = VK_NULL_HANDLE
-        self.output_shader_module = VK_NULL_HANDLE
-        self.descriptor_set_layout = VK_NULL_HANDLE
-        self.descriptor_pool = VK_NULL_HANDLE
-        self.descriptor_set = VK_NULL_HANDLE
+        self.pipeline_layout: dict[str, ctypes.c_uint64] = {}
+        self.hidden_pipeline = ctypes.c_uint64()
+        self.output_pipeline = ctypes.c_uint64()
+        self.hidden_shader_module = ctypes.c_uint64()
+        self.output_shader_module = ctypes.c_uint64()
+        self.descriptor_set_layout: dict[str, ctypes.c_uint64] = {}
+        self.descriptor_pool: dict[str, ctypes.c_uint64] = {}
+        self.descriptor_set: dict[str, ctypes.c_uint64] = {}
         self.buffers: dict[str, Buffer] = {}
         self.memory_properties = None
         self._initialized = False
@@ -606,19 +640,14 @@ class VulkanEngine:
         print("✅ VulkanEngine initialized")
 
     def _get_memory_type(self, type_bits: int, properties: int) -> int:
-        # Query memory properties using a simpler approach
-        # VkPhysicalDeviceMemoryProperties has variable-length arrays
-        # We'll use a byte buffer and parse manually
-        
-        # First, get the size by calling with NULL
-        # Actually, just use a fixed-size buffer large enough
+        # Query memory properties using a properly-sized struct
         mem_props = VkPhysicalDeviceMemoryProperties()
         self.lib.vkGetPhysicalDeviceMemoryProperties(self.physical_device, ctypes.pointer(mem_props))
-        
+
         for i in range(mem_props.memoryTypeCount):
-            if (type_bits & (1 << i)) and (mem_props.memoryTypes[i] & properties) == properties:
+            if (type_bits & (1 << i)) and (mem_props.memoryTypes[i].propertyFlags & properties) == properties:
                 return i
-        
+
         raise RuntimeError(f"No suitable memory type found for type_bits={type_bits}, properties={properties}")
 
     def _create_buffer(self, name: str, size: int, usage: int, host_visible: bool = True) -> Buffer:
@@ -682,74 +711,78 @@ class VulkanEngine:
                 ctypes.memmove(buf.mapped_ptr, data.ctypes.data, data.nbytes)
 
     def _create_descriptor_set(self):
-        # Bindings: 0=input, 1=W1, 2=b1, 3=hidden, 4=W2, 5=b2, 5=output (different per pipeline)
-        bindings = (VkDescriptorSetLayoutBinding * 7)()
-        for i, (binding, desc_type) in enumerate([
-            (0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),  # input
-            (1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),  # W1
-            (2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),  # b1
-            (3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),  # hidden
-            (4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),  # W2
-            (5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),  # b2
-            (6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),  # output
-        ]):
-            bindings[i].binding = binding
-            bindings[i].descriptorType = desc_type
-            bindings[i].descriptorCount = 1
-            bindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
+        # Two descriptor layouts/sets, one per pipeline stage.
+        # hidden.comp: 0=input, 1=W1, 2=b1, 3=hidden
+        # output.comp: 0=hidden, 1=W2, 2=b2, 3=output
+        layouts = {
+            "hidden": [(0, "input"), (1, "W1"), (2, "b1"), (3, "hidden")],
+            "output": [(0, "hidden"), (1, "W2"), (2, "b2"), (3, "output")],
+        }
+        self.descriptor_set_layout = {}
+        self.descriptor_pool = {}
+        self.descriptor_set = {}
+        for stage in ("hidden", "output"):
+            bindings = (VkDescriptorSetLayoutBinding * len(layouts[stage]))()
+            for i, (binding, _name) in enumerate(layouts[stage]):
+                bindings[i].binding = binding
+                bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+                bindings[i].descriptorCount = 1
+                bindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
 
-        layout_info = VkDescriptorSetLayoutCreateInfo()
-        layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
-        layout_info.pNext = ctypes.c_void_p()
-        layout_info.flags = 0
-        layout_info.bindingCount = 7
-        layout_info.pBindings = ctypes.cast(bindings, ctypes.POINTER(VkDescriptorSetLayoutBinding))
-        self.descriptor_set_layout = ctypes.c_uint64()
-        self._check(self.lib.vkCreateDescriptorSetLayout(self.device, ctypes.pointer(layout_info), None, ctypes.byref(self.descriptor_set_layout)), "vkCreateDescriptorSetLayout")
+            layout_info = VkDescriptorSetLayoutCreateInfo()
+            layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
+            layout_info.pNext = ctypes.c_void_p()
+            layout_info.flags = 0
+            layout_info.bindingCount = len(layouts[stage])
+            layout_info.pBindings = ctypes.cast(bindings, ctypes.POINTER(VkDescriptorSetLayoutBinding))
+            layout_handle = ctypes.c_uint64()
+            self._check(self.lib.vkCreateDescriptorSetLayout(self.device, ctypes.pointer(layout_info), None, ctypes.byref(layout_handle)), f"vkCreateDescriptorSetLayout {stage}")
+            self.descriptor_set_layout[stage] = layout_handle
 
-        pool_sizes = (VkDescriptorPoolSize * 1)()
-        pool_sizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-        pool_sizes[0].descriptorCount = 7
+            pool_sizes = (VkDescriptorPoolSize * 1)()
+            pool_sizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+            pool_sizes[0].descriptorCount = len(layouts[stage])
 
-        pool_info = VkDescriptorPoolCreateInfo()
-        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
-        pool_info.pNext = ctypes.c_void_p()
-        pool_info.flags = 0
-        pool_info.maxSets = 1
-        pool_info.poolSizeCount = 1
-        pool_info.pPoolSizes = pool_sizes
-        self.descriptor_pool = ctypes.c_uint64()
-        self._check(self.lib.vkCreateDescriptorPool(self.device, ctypes.pointer(pool_info), None, ctypes.byref(self.descriptor_pool)), "vkCreateDescriptorPool")
+            pool_info = VkDescriptorPoolCreateInfo()
+            pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO
+            pool_info.pNext = ctypes.c_void_p()
+            pool_info.flags = 0
+            pool_info.maxSets = 1
+            pool_info.poolSizeCount = 1
+            pool_info.pPoolSizes = pool_sizes
+            pool_handle = ctypes.c_uint64()
+            self._check(self.lib.vkCreateDescriptorPool(self.device, ctypes.pointer(pool_info), None, ctypes.byref(pool_handle)), f"vkCreateDescriptorPool {stage}")
+            self.descriptor_pool[stage] = pool_handle
 
-        alloc_info = VkDescriptorSetAllocateInfo()
-        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
-        alloc_info.pNext = ctypes.c_void_p()
-        alloc_info.descriptorPool = self.descriptor_pool
-        alloc_info.descriptorSetCount = 1
-        alloc_info.pSetLayouts = ctypes.pointer(self.descriptor_set_layout)
-        self.descriptor_set = ctypes.c_uint64()
-        self._check(self.lib.vkAllocateDescriptorSets(self.device, ctypes.pointer(alloc_info), ctypes.byref(self.descriptor_set)), "vkAllocateDescriptorSets")
+            alloc_info = VkDescriptorSetAllocateInfo()
+            alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO
+            alloc_info.pNext = ctypes.c_void_p()
+            alloc_info.descriptorPool = pool_handle.value
+            alloc_info.descriptorSetCount = 1
+            alloc_info.pSetLayouts = ctypes.pointer(layout_handle)
+            set_handle = ctypes.c_uint64()
+            self._check(self.lib.vkAllocateDescriptorSets(self.device, ctypes.pointer(alloc_info), ctypes.byref(set_handle)), f"vkAllocateDescriptorSets {stage}")
+            self.descriptor_set[stage] = set_handle
 
-        # Update descriptor set
-        buffer_infos = []
-        for binding, name in [(0, "input"), (1, "W1"), (2, "b1"), (3, "hidden"), (4, "W2"), (5, "b2"), (6, "output")]:
-            buf = self.buffers[name]
-            info = VkDescriptorBufferInfo()
-            info.buffer = buf.buffer
-            info.offset = 0
-            info.range = VK_WHOLE_SIZE
-            buffer_infos.append(info)
+            buffer_infos = []
+            for binding, name in layouts[stage]:
+                buf = self.buffers[name]
+                info = VkDescriptorBufferInfo()
+                info.buffer = buf.buffer
+                info.offset = 0
+                info.range = VK_WHOLE_SIZE
+                buffer_infos.append(info)
 
-        writes = (VkWriteDescriptorSet * 7)()
-        for i, (binding, buf_info) in enumerate(zip(range(7), buffer_infos)):
-            writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
-            writes[i].dstSet = self.descriptor_set
-            writes[i].dstBinding = binding
-            writes[i].descriptorCount = 1
-            writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-            writes[i].pBufferInfo = ctypes.pointer(buf_info)
+            writes = (VkWriteDescriptorSet * len(layouts[stage]))()
+            for i, ((binding, _name), buf_info) in enumerate(zip(layouts[stage], buffer_infos)):
+                writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET
+                writes[i].dstSet = set_handle.value
+                writes[i].dstBinding = binding
+                writes[i].descriptorCount = 1
+                writes[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+                writes[i].pBufferInfo = ctypes.pointer(buf_info)
 
-        self.lib.vkUpdateDescriptorSets(self.device, 7, writes, 0, None)
+            self.lib.vkUpdateDescriptorSets(self.device, len(layouts[stage]), writes, 0, None)
 
     def _load_shader(self, path: Path) -> int:
         with open(path, "rb") as f:
@@ -768,12 +801,15 @@ class VulkanEngine:
         return module.value
 
     def _create_pipelines(self):
-        # Pipeline layout
-        layout_info = VkPipelineLayoutCreateInfo()
-        layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
-        layout_info.setLayoutCount = 1
-        layout_info.pSetLayouts = ctypes.pointer(self.descriptor_set_layout)
-        self._check(self.lib.vkCreatePipelineLayout(self.device, ctypes.pointer(layout_info), None, ctypes.pointer(self.pipeline_layout)), "vkCreatePipelineLayout")
+        # Pipeline layout (one per stage, each references its own descriptor set)
+        for stage in ("hidden", "output"):
+            layout_info = VkPipelineLayoutCreateInfo()
+            layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
+            layout_info.setLayoutCount = 1
+            layout_info.pSetLayouts = ctypes.pointer(self.descriptor_set_layout[stage])
+            layout_handle = ctypes.c_uint64()
+            self._check(self.lib.vkCreatePipelineLayout(self.device, ctypes.pointer(layout_info), None, ctypes.pointer(layout_handle)), f"vkCreatePipelineLayout {stage}")
+            self.pipeline_layout[stage] = layout_handle
 
         # Hidden layer pipeline
         self.hidden_shader_module = self._load_shader(self.shader_dir / "hidden.spv")
@@ -786,14 +822,23 @@ class VulkanEngine:
         pipe_info = VkComputePipelineCreateInfo()
         pipe_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO
         pipe_info.stage = stage_info
-        pipe_info.layout = self.pipeline_layout
+        pipe_info.layout = self.pipeline_layout["hidden"].value
         self._check(self.lib.vkCreateComputePipelines(self.device, VK_NULL_HANDLE, 1, ctypes.pointer(pipe_info), None, ctypes.pointer(self.hidden_pipeline)), "vkCreateComputePipelines hidden")
 
         # Output layer pipeline
         self.output_shader_module = self._load_shader(self.shader_dir / "output.spv")
         stage_info.module = self.output_shader_module
         pipe_info.stage = stage_info
+        pipe_info.layout = self.pipeline_layout["output"].value
         self._check(self.lib.vkCreateComputePipelines(self.device, VK_NULL_HANDLE, 1, ctypes.pointer(pipe_info), None, ctypes.pointer(self.output_pipeline)), "vkCreateComputePipelines output")
+
+    def _submit(self) -> None:
+        submit_info = VkSubmitInfo()
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO
+        submit_info.commandBufferCount = 1
+        submit_info.pCommandBuffers = ctypes.pointer(self.command_buffer)
+        self._check(self.lib.vkQueueSubmit(self.queue, 1, ctypes.pointer(submit_info), self.fence), "vkQueueSubmit")
+        self._check(self.lib.vkWaitForFences(self.device, 1, ctypes.pointer(self.fence), 1, 1_000_000_000), "vkWaitForFences")
 
     def compute(self, input_grid: np.ndarray) -> np.ndarray:
         """Run inference: input_grid (100,) -> output logits (4,)."""
@@ -804,35 +849,26 @@ class VulkanEngine:
         buf = self.buffers["input"]
         ctypes.memmove(buf.mapped_ptr, input_grid.ctypes.data, input_grid.nbytes)
 
-        # Reset fence
-        self._check(self.lib.vkResetFences(self.device, 1, ctypes.pointer(self.fence)), "vkResetFences")
-
-        # Record command buffer
         begin_info = VkCommandBufferBeginInfo()
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
+
+        # Pass 1: hidden layer (own submission so its writes are visible to pass 2)
+        self._check(self.lib.vkResetFences(self.device, 1, ctypes.pointer(self.fence)), "vkResetFences")
         self._check(self.lib.vkBeginCommandBuffer(self.command_buffer, ctypes.pointer(begin_info)), "vkBeginCommandBuffer")
-
-        # Pass 1: hidden layer
         self.lib.vkCmdBindPipeline(self.command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, self.hidden_pipeline)
-        self.lib.vkCmdBindDescriptorSets(self.command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, self.pipeline_layout, 0, 1, ctypes.pointer(self.descriptor_set), 0, None)
-        self.lib.vkCmdDispatch(self.command_buffer, 1, 1, 1)  # 64 workgroups of 64 = 4096, but we only need 64
-
-        # Pass 2: output layer
-        self.lib.vkCmdBindPipeline(self.command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, self.output_pipeline)
-        self.lib.vkCmdBindDescriptorSets(self.command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, self.pipeline_layout, 0, 1, ctypes.pointer(self.descriptor_set), 0, None)
-        self.lib.vkCmdDispatch(self.command_buffer, 1, 1, 1)  # 4 workgroups of 4
-
+        self.lib.vkCmdBindDescriptorSets(self.command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, self.pipeline_layout["hidden"], 0, 1, ctypes.pointer(self.descriptor_set["hidden"]), 0, None)
+        self.lib.vkCmdDispatch(self.command_buffer, 1, 1, 1)  # 1 workgroup of 64 threads -> 64 hidden units
         self._check(self.lib.vkEndCommandBuffer(self.command_buffer), "vkEndCommandBuffer")
+        self._submit()
 
-        # Submit
-        submit_info = VkSubmitInfo()
-        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO
-        submit_info.commandBufferCount = 1
-        submit_info.pCommandBuffers = ctypes.pointer(self.command_buffer)
-        self._check(self.lib.vkQueueSubmit(self.queue, 1, ctypes.pointer(submit_info), self.fence), "vkQueueSubmit")
-
-        # Wait
-        self._check(self.lib.vkWaitForFences(self.device, 1, ctypes.pointer(self.fence), 1, 1_000_000_000), "vkWaitForFences")
+        # Pass 2: output layer (separate submission: ordering + memory visibility across submissions)
+        self._check(self.lib.vkResetFences(self.device, 1, ctypes.pointer(self.fence)), "vkResetFences")
+        self._check(self.lib.vkBeginCommandBuffer(self.command_buffer, ctypes.pointer(begin_info)), "vkBeginCommandBuffer")
+        self.lib.vkCmdBindPipeline(self.command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, self.output_pipeline)
+        self.lib.vkCmdBindDescriptorSets(self.command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, self.pipeline_layout["output"], 0, 1, ctypes.pointer(self.descriptor_set["output"]), 0, None)
+        self.lib.vkCmdDispatch(self.command_buffer, 1, 1, 1)  # 1 workgroup of 4 threads -> 4 outputs
+        self._check(self.lib.vkEndCommandBuffer(self.command_buffer), "vkEndCommandBuffer")
+        self._submit()
 
         # Download output
         out_buf = self.buffers["output"]
@@ -855,14 +891,17 @@ class VulkanEngine:
             if module != VK_NULL_HANDLE:
                 self.lib.vkDestroyShaderModule(self.device, module, None)
 
-        if self.pipeline_layout != VK_NULL_HANDLE:
-            self.lib.vkDestroyPipelineLayout(self.device, self.pipeline_layout, None)
+        for layout_handle in self.pipeline_layout.values():
+            if layout_handle.value != VK_NULL_HANDLE:
+                self.lib.vkDestroyPipelineLayout(self.device, layout_handle, None)
 
-        if self.descriptor_set_layout != VK_NULL_HANDLE:
-            self.lib.vkDestroyDescriptorSetLayout(self.device, self.descriptor_set_layout, None)
+        for layout_handle in self.descriptor_set_layout.values():
+            if layout_handle.value != VK_NULL_HANDLE:
+                self.lib.vkDestroyDescriptorSetLayout(self.device, layout_handle, None)
 
-        if self.descriptor_pool != VK_NULL_HANDLE:
-            self.lib.vkDestroyDescriptorPool(self.device, self.descriptor_pool, None)
+        for pool_handle in self.descriptor_pool.values():
+            if pool_handle.value != VK_NULL_HANDLE:
+                self.lib.vkDestroyDescriptorPool(self.device, pool_handle, None)
 
         if self.command_pool != VK_NULL_HANDLE:
             self.lib.vkDestroyCommandPool(self.device, self.command_pool, None)

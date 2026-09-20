@@ -197,10 +197,11 @@ def test_metrics_endpoint_function():
 class TestWatchdog:
     """Tests for watchdog functionality."""
 
-    @patch("src.dfb.service.get_telemetry_state")
-    @patch("src.dfb.service.log_mavlink_event")
+    @patch("src.dfb.mavlink_ingest.get_telemetry_state")
+    @patch("src.dfb.logging.log_mavlink_event")
     def test_watchdog_detects_stale_link(self, mock_log, mock_telemetry):
         """Test watchdog detects stale MAVLink link."""
+        # Import inside function to allow patching
         from src.dfb.service import _watchdog_loop
 
         # Create telemetry with stale timestamp
@@ -212,7 +213,6 @@ class TestWatchdog:
         mock_telemetry.return_value = telemetry
 
         # Run one iteration of watchdog
-
         async def run_once():
             task = asyncio.create_task(_watchdog_loop())
             await asyncio.sleep(0.1)

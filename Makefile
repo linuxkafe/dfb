@@ -28,7 +28,7 @@ format:
 build:
 	@$(AES_BUILD)
 
-check: docs-check code-check test-check lint-check
+check: docs-check code-check test-check lint-check safety-check
 
 docs-check:
 	@test -f docs/VISION.md && grep -q "Problem" docs/VISION.md
@@ -45,6 +45,10 @@ test-check:
 
 lint-check:
 	@$(AES_LINT) src/dfb/cpu_engine.py src/dfb/service.py tests
+
+safety-check:
+	@echo "🔍 Running safety checks..."
+	@python3 scripts/safety_check.py
 
 validate:
 	@ruff check . || true
