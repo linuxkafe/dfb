@@ -37,7 +37,7 @@ class DeckClient:
 
 @pytest.fixture(scope="session")
 def deck_client():
-    """Client for Deck service (direct LAN access)."""
+    """Client for Deck service (direct LAN access). Skips if service unavailable."""
     client = DeckClient()
     # Verify service reachable
     for _ in range(10):
@@ -47,7 +47,7 @@ def deck_client():
         except requests.RequestException:
             time.sleep(0.5)
     else:
-        pytest.fail(f"Cannot reach Deck service at {BASE_URL}")
+        pytest.skip(f"Cannot reach Deck service at {BASE_URL}")
     return client
 
 
