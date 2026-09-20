@@ -12,8 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: pip install uv
+
       - name: Setup
-        run: make setup
+        run: uv sync --extra test 2>/dev/null || pip install -e ".[test]"
 
       - name: Lint
         run: make lint
