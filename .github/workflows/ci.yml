@@ -17,11 +17,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install uv
-        run: pip install uv
-
       - name: Setup
-        run: uv sync --extra test 2>/dev/null || pip install -e ".[test]"
+        run: pip install -e ".[test]"
 
       - name: Lint
         run: make lint
