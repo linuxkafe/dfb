@@ -16,3 +16,7 @@ env/
 .tmp/
 aes/verification/
 .llm_venv/
+
+# AES project management (local only)
+aes/
+.aes/

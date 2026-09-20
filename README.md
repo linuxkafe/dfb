@@ -1,44 +1,68 @@
-# dfb — Deck Fly Brain
+# dfb
 
-Autonomous flight decision service for FPV drones, running on Steam Deck hardware.
+A compute framework for Steam Deck (x86_64 Linux, AMD APU) with Vulkan acceleration.
+
+## Overview
+
+This project provides a Vulkan compute engine and a neural co-processor prototype running on Steam Deck hardware, accessible remotely via SSH.
 
 ## Architecture
 
-- **Client** (this machine): requests, UI, orchestration
-- **Server** (Steam Deck via SSH): Fly Brain service — telemetry ingest, decision engine, MAVLink/CRSF link
+- **Client** (development machine): requests, UI, orchestration
+- **Server** (Steam Deck via SSH): Vulkan compute service, neural inference
 
 ## Quick Start
 
 ```bash
 make setup      # install dependencies
-make check      # run quality gates
-make deploy-deck  # deploy service to Steam Deck (after T001)
+make check      # run quality gates (lint, test, safety)
+make deploy-deck  # deploy service to Steam Deck
 ```
 
-## Development
+## Vulkan Compute Engine
 
-This project follows the **AES (Ambrósio Engineering System)** protocol.
-See `CLAUDE.md` for the operational contract.
+Located in `src/dfb/vulkan_engine.py` — a ctypes-based Vulkan 1.3 wrapper with:
+- Two-pass compute pipeline (hidden + output shaders)
+- Per-submission fencing for correct pass ordering
+- Verified on Steam Deck RADV (VANGOGH, API 1.4.330)
 
-## Fly-Brain Neural Co-Processor (sim/)
+## Neural Co-Processor (sim/)
 
-A bio-inspired "fly brain" that shapes a chatbot's temperament via connectome
-circuits (numpy + requests only, CPU-only, <1.5 GB RAM):
+A CPU-only neural co-processor prototype (`sim/`):
 
-- `sim/fly_coprocessor.py` — E-PG ring attractor, sparse mushroom body with
-  DAN reward/punishment plasticity, octopamine habituation pool
-- `sim/semantic_encoder.py` — topic -> E-PG angle, pre-synaptic habituation
-- `sim/neuro_to_ollama.py` — connectome state -> Ollama temperature/length and
-  context-switch / caution system notes
-- `sim/chat_cli.py` — interactive CLI; `++` / `--` reward/punish; telemetry line
-- `sim/test_coprocessor.py` — offline 5-turn validation (mock Ollama)
+- `fly_coprocessor.py` — E-PG ring attractor, mushroom body with DAN plasticity, octopamine habituation
+- `semantic_encoder.py` — text → topic angle with pre-synaptic habituation
+- `neuro_to_ollama.py` — connectome state → Ollama parameters (temperature, num_predict, context-switch notes)
+- `chat_cli.py` — interactive CLI with `++`/`--` feedback, telemetry line
+- `test_coprocessor.py` — 13 offline validation cases
 
 ```bash
-# offline demo (deterministic mock reply)
+# offline demo (mock Ollama)
 python sim/chat_cli.py --mock
 
-# live against Steam Deck Ollama (llama3.1:8b)
+# live against Steam Deck Ollama
 python sim/chat_cli.py --base-url http://steamdeck:11434 --model llama3.1:8b
 ```
 
-Telemetry: `[Bússola: 42° | Alerta (Oct): 0.78 | Afinidade: +0.35 | Temp: 0.65]`
+Telemetry format: `[Bússola: 42° | Alerta (Oct): 0.78 | Afinidade: +0.35 | Temp: 0.65]`
+
+## Development
+
+```bash
+make test   # run test suite (pytest)
+make lint   # ruff check
+make format # ruff format
+```
+
+## TODO
+
+- [ ] Persistent memory/DB for co-processor state
+- [ ] Streaming UI for chat_cli
+- [ ] Real-time audio integration
+- [ ] Move simulation to Vulkan compute kernel (un-defer T005)
+- [ ] CI: add codecov token for coverage upload
+- [ ] Safety gate closure for gRPC surface (T013)
+
+## Hardware Target
+
+Steam Deck (AMD APU, VANGOGH GPU, RADV Vulkan driver). No FC firmware changes — integration via MAVLink/CRSF only.
