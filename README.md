@@ -46,6 +46,36 @@ python sim/chat_cli.py --base-url http://steamdeck:11434 --model llama3.1:8b
 
 Telemetry format: `[Bússola: 42° | Alerta (Oct): 0.78 | Afinidade: +0.35 | Temp: 0.65]`
 
+## 🧠 Coprocessador Biológico: Deteção de Insistência (Circuito Giant Fiber)
+
+Este projeto integra uma emulação dos circuitos neuronais da *Drosophila* (especificamente o **Neurónio Gigante de Fuga - Giant Fiber**) para gerir a dinâmica de diálogo em conversas quotidianas sem depender de classificadores pesados de sentimento.
+
+### Como Funciona
+* **Acumulação de Potencial:** Mensagens repetitivas, frustradas ou loops sem resolução aumentam a voltagem da membrana do circuito biológico.
+* **Disparo de Fuga:** Quando o potencial atinge o limiar crítico (0.5), o assistente corta automaticamente explicações prolixas e adota um tom estritamente direto e focado na resolução imediata.
+* **Recuperação:** Diálogos construtivos e pausas naturais permitem o decaimento passivo do potencial.
+
+### Exemplo Prático de Utilização (CLI)
+
+```text
+Utilizador: Como faço para listar processos a correr no porto 8080?
+[Potencial GF: 0.05 | Modo: Normal | Temp: 0.60]
+Bot: Podes verificar quais os processos a escutar nessa porta utilizando o utilitário lsof ou o ss com privilégios adequados:
+1. Com lsof: `lsof -i :8080`
+2. Com ss: `ss -tulpn | grep :8080`
+Qualquer um deles mostrará o PID associado ao serviço.
+
+Utilizador: Não deu nada.
+[Potencial GF: 0.35 | Modo: Normal | Temp: 0.50]
+Bot: Se o comando não devolveu saída, confirma se estás a correr o comando com privilégios suficientes ou se a porta está mesmo ativa. Tenta com `sudo ss -tulpn | grep 8080`.
+
+Utilizador: Nada outra vez, continua sem dar nada!
+[Potencial GF: 0.82 | Modo: DISPARO DE FUGA | Temp: 0.10]
+Bot: 
+- Executa: `sudo ss -lnt` e verifica se o porto aparece listado na coluna de escuta.
+- Se não aparecer, o serviço não está ativo. Queres arrancar o serviço ou verificar os logs do sistema?
+```
+
 ## Development
 
 ```bash
