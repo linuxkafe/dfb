@@ -1,4 +1,4 @@
-# dfb — FlyBrain Compute Framework
+# dfb — Deck FlyBrain 
 
 A compute framework for the **FlyBrain** autonomous flight decision system, running on Steam Deck (x86_64 Linux, AMD APU) with Vulkan acceleration.
 
