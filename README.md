@@ -1,15 +1,15 @@
-# dfb
+# dfb — FlyBrain Compute Framework
 
-A compute framework for Steam Deck (x86_64 Linux, AMD APU) with Vulkan acceleration.
+A compute framework for the **FlyBrain** autonomous flight decision system, running on Steam Deck (x86_64 Linux, AMD APU) with Vulkan acceleration.
 
 ## Overview
 
-This project provides a Vulkan compute engine and a neural co-processor prototype running on Steam Deck hardware, accessible remotely via SSH.
+This project provides a Vulkan compute engine and a neural co-processor prototype for the FlyBrain, running on Steam Deck hardware, accessible remotely via SSH.
 
 ## Architecture
 
 - **Client** (development machine): requests, UI, orchestration
-- **Server** (Steam Deck via SSH): Vulkan compute service, neural inference
+- **Server** (Steam Deck via SSH): Vulkan compute service, FlyBrain neural inference
 
 ## Quick Start
 
