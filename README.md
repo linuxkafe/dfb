@@ -44,36 +44,36 @@ python sim/chat_cli.py --mock
 python sim/chat_cli.py --base-url http://steamdeck:11434 --model llama3.1:8b
 ```
 
-Telemetry format: `[Bússola: 42° | Alerta (Oct): 0.78 | Afinidade: +0.35 | Temp: 0.65]`
+Telemetry format: `[Compass: 42° | Alert (Oct): 0.78 | Affinity: +0.35 | Temp: 0.65]`
 
-## 🧠 Coprocessador Biológico: Deteção de Insistência (Circuito Giant Fiber)
+## 🧠 Biological Co-Processor: Frustration Detection (Giant Fiber Circuit)
 
-Este projeto integra uma emulação dos circuitos neuronais da *Drosophila* (especificamente o **Neurónio Gigante de Fuga - Giant Fiber**) para gerir a dinâmica de diálogo em conversas quotidianas sem depender de classificadores pesados de sentimento.
+This project integrates an emulation of *Drosophila* neural circuits (specifically the **Giant Fiber Escape Neuron**) to manage dialogue dynamics in everyday conversations without relying on heavy sentiment classifiers.
 
-### Como Funciona
-* **Acumulação de Potencial:** Mensagens repetitivas, frustradas ou loops sem resolução aumentam a voltagem da membrana do circuito biológico.
-* **Disparo de Fuga:** Quando o potencial atinge o limiar crítico (0.5), o assistente corta automaticamente explicações prolixas e adota um tom estritamente direto e focado na resolução imediata.
-* **Recuperação:** Diálogos construtivos e pausas naturais permitem o decaimento passivo do potencial.
+### How It Works
+* **Potential Accumulation:** Repetitive, frustrated, or unresolved messages increase the membrane potential of the biological circuit.
+* **Escape Firing:** When the potential reaches the critical threshold (0.5), the assistant automatically truncates verbose explanations and adopts a strictly direct tone focused on immediate resolution.
+* **Recovery:** Constructive dialogue and natural pauses allow passive decay of the potential.
 
-### Exemplo Prático de Utilização (CLI)
+### Practical CLI Example
 
 ```text
-Utilizador: Como faço para listar processos a correr no porto 8080?
-[Potencial GF: 0.05 | Modo: Normal | Temp: 0.60]
-Bot: Podes verificar quais os processos a escutar nessa porta utilizando o utilitário lsof ou o ss com privilégios adequados:
-1. Com lsof: `lsof -i :8080`
-2. Com ss: `ss -tulpn | grep :8080`
-Qualquer um deles mostrará o PID associado ao serviço.
+User: How do I list processes listening on port 8080?
+[GF Potential: 0.05 | Mode: Normal | Temp: 0.60]
+Bot: You can check which processes are listening on that port using lsof or ss with appropriate privileges:
+1. With lsof: `lsof -i :8080`
+2. With ss: `ss -tulpn | grep :8080`
+Either will show the PID associated with the service.
 
-Utilizador: Não deu nada.
-[Potencial GF: 0.35 | Modo: Normal | Temp: 0.50]
-Bot: Se o comando não devolveu saída, confirma se estás a correr o comando com privilégios suficientes ou se a porta está mesmo ativa. Tenta com `sudo ss -tulpn | grep 8080`.
+User: Nothing happened.
+[GF Potential: 0.35 | Mode: Normal | Temp: 0.50]
+Bot: If the command returned no output, verify you are running it with sufficient privileges or that the port is actually active. Try `sudo ss -tulpn | grep 8080`.
 
-Utilizador: Nada outra vez, continua sem dar nada!
-[Potencial GF: 0.82 | Modo: DISPARO DE FUGA | Temp: 0.10]
+User: Still nothing, it keeps failing!
+[GF Potential: 0.82 | Mode: ESCAPE FIRED | Temp: 0.10]
 Bot: 
-- Executa: `sudo ss -lnt` e verifica se o porto aparece listado na coluna de escuta.
-- Se não aparecer, o serviço não está ativo. Queres arrancar o serviço ou verificar os logs do sistema?
+- Run: `sudo ss -lnt` and check if the port appears in the listening column.
+- If it does not appear, the service is not running. Do you want to start the service or check system logs?
 ```
 
 ## Development
