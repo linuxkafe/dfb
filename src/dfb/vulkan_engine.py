@@ -1,4 +1,4 @@
-"""Vulkan compute engine for Fly Brain decision inference."""
+"""Vulkan compute engine for Fly Brain decision inference (optional, graceful degradation)."""
 import os
 import ctypes
 import numpy as np
@@ -9,6 +9,10 @@ from dataclasses import dataclass
 
 # Vulkan constants
 VK_API_VERSION_1_0 = 0  # Use 0 to let loader pick default
+
+# Vulkan availability flag
+_VULKAN_AVAILABLE = True
+_VULKAN_ERROR: Optional[str] = None
 VK_STRUCTURE_TYPE_APPLICATION_INFO = 0
 VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO = 1
 VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO = 2
@@ -55,14 +59,18 @@ VK_WHOLE_SIZE = 0xFFFFFFFFFFFFFFFF
 
 
 def load_vulkan():
-    """Load libvulkan.so and define function signatures."""
+    """Load libvulkan.so and define function signatures. Returns None if Vulkan unavailable."""
+    global _VULKAN_AVAILABLE, _VULKAN_ERROR
+    
     try:
         lib = ctypes.CDLL("libvulkan.so.1")
     except OSError:
         try:
             lib = ctypes.CDLL("libvulkan.so")
         except OSError as e:
-            raise RuntimeError("Cannot load libvulkan.so. Install vulkan-tools/vulkan-runtime.") from e
+            _VULKAN_AVAILABLE = False
+            _VULKAN_ERROR = f"Cannot load libvulkan.so: {e}"
+            return None
 
     # Define function prototypes
     lib.vkCreateInstance.argtypes = [ctypes.POINTER(VkInstanceCreateInfo), ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint64)]
@@ -195,6 +203,16 @@ def load_vulkan():
     lib.vkGetPhysicalDeviceMemoryProperties.restype = None
 
     return lib
+
+
+def is_vulkan_available() -> bool:
+    """Check if Vulkan runtime is available."""
+    return _VULKAN_AVAILABLE
+
+
+def get_vulkan_error() -> Optional[str]:
+    """Get the error message if Vulkan is unavailable."""
+    return _VULKAN_ERROR
 
 
 # Vulkan structures
@@ -540,6 +558,16 @@ class VulkanEngine:
     def initialize(self):
         if self._initialized:
             return
+
+        # Check Vulkan availability
+        if not is_vulkan_available():
+            raise RuntimeError(f"Vulkan not available: {get_vulkan_error()}")
+
+        # Check shader files exist
+        hidden_spv = self.shader_dir / "hidden.spv"
+        output_spv = self.shader_dir / "output.spv"
+        if not hidden_spv.exists() or not output_spv.exists():
+            raise RuntimeError(f"Shader files not found in {self.shader_dir}. Compile .comp shaders to .spv using glslc.")
 
         # 1. Create instance
         app_info = VkApplicationInfo()
@@ -929,13 +957,19 @@ class VulkanEngine:
 _vulkan_engine: Optional[VulkanEngine] = None
 
 
-def get_vulkan_engine(shader_dir: Optional[Path] = None) -> VulkanEngine:
+def get_vulkan_engine(shader_dir: Optional[Path] = None) -> Optional[VulkanEngine]:
+    """Get Vulkan engine instance. Returns None if Vulkan unavailable."""
     global _vulkan_engine
     if _vulkan_engine is None:
         if shader_dir is None:
             shader_dir = Path(__file__).parent.parent / "shaders"
         _vulkan_engine = VulkanEngine(shader_dir)
-        _vulkan_engine.initialize()
+        try:
+            _vulkan_engine.initialize()
+        except RuntimeError as e:
+            print(f"⚠️  Vulkan initialization failed, using CPU fallback: {e}")
+            _vulkan_engine = None
+            return None
     return _vulkan_engine
 
 

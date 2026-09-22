@@ -1,12 +1,31 @@
 """CLI for Deck Fly Brain."""
 import json
 import sys
+from dataclasses import is_dataclass, asdict
 from typing import Optional, List
 import typer
 import numpy as np
 from rich import print_json
 
 from .client import HttpDeckClient, GrpcDeckClient, create_client_from_env
+from .client import (
+    HealthResponse, VersionResponse, DecideResponse,
+    AdvisoryResponse, SafetyViolationResponse, SafetyStatusResponse,
+    TelemetryDecideResponse, TokenResponse, CommandResponse, VerifyResponse,
+    MAVLinkTelemetryResponse, TelemetryResponse
+)
+
+
+def _dataclass_encoder(obj):
+    """Custom JSON encoder for dataclasses and nested objects."""
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return asdict(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def _print_json(data):
+    """Print JSON with dataclass support."""
+    print_json(data=data, default=_dataclass_encoder)
 
 
 app = typer.Typer(help="Deck Fly Brain CLI")
@@ -32,7 +51,7 @@ def health(
     """Check service health."""
     client = get_client(host, port)
     resp = client.health()
-    print_json(data=resp.__dict__)
+    _print_json(resp)
 
 
 @app.command()
@@ -43,7 +62,7 @@ def version(
     """Get service version."""
     client = get_client(host, port)
     resp = client.version()
-    print_json(data=resp.__dict__)
+    _print_json(resp)
 
 
 @app.command()
@@ -68,7 +87,7 @@ def decide(
         grid=state_dict["grid"],
         exit=state_dict["exit"],
     )
-    print_json(data=resp.__dict__)
+    _print_json(resp)
 
 
 @app.command("decide-telemetry")
@@ -88,7 +107,7 @@ def decide_telemetry(
         target_alt=target_alt,
         target_speed=target_speed,
     )
-    print_json(data=resp.__dict__)
+    _print_json(resp)
 
 
 @app.command("issue-token")
@@ -99,7 +118,7 @@ def issue_token(
     """Issue a new confirmation token."""
     client = get_client(host, port)
     resp = client.issue_token()
-    print_json(data=resp.__dict__)
+    _print_json(resp)
 
 
 @app.command()
@@ -114,7 +133,7 @@ def command(
     client = get_client(host, port)
     params_dict = json.loads(params) if params else {}
     resp = client.command(action=action, params=params_dict, token=token)
-    print_json(data=resp.__dict__)
+    _print_json(resp)
 
 
 @app.command("verify-token")
@@ -126,7 +145,7 @@ def verify_token(
     """Verify a confirmation token without consuming it."""
     client = get_client(host, port)
     resp = client.verify_token(token)
-    print_json(data=resp.__dict__)
+    _print_json(resp)
 
 
 @app.command("telemetry")
@@ -137,7 +156,7 @@ def telemetry(
     """Get unified telemetry state (MAVLink + CRSF)."""
     client = get_client(host, port)
     resp = client.telemetry()
-    print_json(data=resp.__dict__)
+    _print_json(resp)
 
 
 if __name__ == "__main__":

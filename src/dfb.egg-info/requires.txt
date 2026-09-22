@@ -1,11 +1,22 @@
 fastapi
 uvicorn[standard]
 pymavlink
+pyserial
 pyyaml
+prometheus-client
+structlog
+grpcio
+protobuf>=7.35.1
 
 [cli]
 typer
 rich
+
+[filter]
+filterpy
+
+[grpc]
+grpcio-tools
 
 [monitor]
 psutil
@@ -20,3 +31,8 @@ numpy
 [test]
 requests
 psutil
+pytest-asyncio
+pytest
+pytest-cov
+ruff
+numpy
