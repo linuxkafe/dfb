@@ -2,6 +2,8 @@
 source = src
 omit =
     src/dfb/vulkan_engine.py
+    src/dfb/grpc/flybrain_pb2.py
+    src/dfb/grpc/flybrain_pb2_grpc.py
 
 [report]
 exclude_lines =
