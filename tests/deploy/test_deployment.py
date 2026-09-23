@@ -259,6 +259,8 @@ class TestSmokeBoot:
         try:
             health_url = f"http://127.0.0.1:{http_port}/health"
             last_err = None
+            data = None
+            resp_status = None
             for _ in range(40):
                 if proc.poll() is not None:
                     output = proc.stdout.read().decode() if proc.stdout else ""
@@ -267,19 +269,31 @@ class TestSmokeBoot:
                     )
                 try:
                     with urllib.request.urlopen(health_url, timeout=1) as resp:
-                        assert resp.status == 200
+                        resp_status = resp.status
                         data = resp.read().decode()
-                        assert '"components"' in data
-                        assert '"status"' in data
-                        # Without telemetry connected, status is "unhealthy" by
-                        # design — the endpoint must still serve valid JSON.
-                        assert '"unhealthy"' in data or '"ok"' in data
                         break
                 except Exception as exc:  # noqa: BLE001
                     last_err = exc
                     time.sleep(0.25)
             else:
-                raise AssertionError(f"service never became healthy: {last_err}")
+                raise AssertionError(f"service never became reachable: {last_err}")
+
+            # Process exited before boot completed — report real output.
+            if proc.poll() is not None:
+                output = proc.stdout.read().decode() if proc.stdout else ""
+                raise AssertionError(
+                    f"uvicorn exited before serving (code {proc.returncode})\n{output}"
+                )
+
+            # Content assertions must not be masked by the retry loop above.
+            assert resp_status == 200, f"unexpected /health status {resp_status}"
+            assert '"components"' in data, f"missing components in: {data}"
+            assert '"status"' in data, f"missing status in: {data}"
+            # Without telemetry connected, status is "unhealthy" by design —
+            # the endpoint must still serve valid JSON.
+            assert any(s in data for s in ('"unhealthy"', '"ok"')), (
+                f"unexpected status payload: {data}"
+            )
 
             with urllib.request.urlopen(
                 f"http://127.0.0.1:{http_port}/version", timeout=2

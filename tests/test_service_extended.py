@@ -382,43 +382,6 @@ class TestServiceExtended:
                 # log_request(path, method, status, duration_ms, correlation_id)
                 assert mock_log.call_args.args[4] == "test-123"
 
-    def test_watchdog_logic_mavlink(self):
-        """Test watchdog MAVLink logic."""
-        with (
-            patch("src.dfb.service.get_telemetry_state") as mock_telemetry,
-            patch("src.dfb.service.update_mavlink_link_status"),
-            patch("src.dfb.service.update_mavlink_rate"),
-            patch("src.dfb.service.time") as mock_time,
-        ):
-            fixed_now = 1000.0
-            mock_time.time.return_value = fixed_now
-            mock_telemetry.return_value = MagicMock(
-                timestamp=985.0, link_ok=False, msg_counts={"HEARTBEAT": 10}
-            )
-            telemetry = mock_telemetry.return_value
-            link_age = fixed_now - telemetry.timestamp
-            assert link_age == 15.0
-            assert link_age > 10.0
-
-    def test_watchdog_logic_decision_engine(self):
-        """Test watchdog decision engine logic."""
-        import src.dfb.service as service_module
-
-        fixed_now = 1000.0
-        service_module._last_decision_time = fixed_now - 60
-        with (
-            patch("src.dfb.service.get_telemetry_state") as mock_telemetry,
-            patch("src.dfb.service.update_mavlink_link_status"),
-            patch("src.dfb.service.update_mavlink_rate"),
-            patch("src.dfb.service.time") as mock_time,
-        ):
-            mock_time.time.return_value = fixed_now
-            mock_telemetry.return_value = MagicMock(
-                timestamp=fixed_now, link_ok=True, msg_counts={}
-            )
-            last_decision_age = fixed_now - service_module._last_decision_time
-            assert last_decision_age > 30.0
-
 
 class TestServiceLifespan:
     """Tests for service lifespan."""
