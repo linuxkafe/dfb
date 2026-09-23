@@ -1,93 +1,59 @@
 """Prometheus metrics for Deck Fly Brain."""
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
-from starlette.responses import Response
 
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
+from starlette.responses import Response
 
 # HTTP metrics
 HTTP_REQUESTS_TOTAL = Counter(
-    'http_requests_total',
-    'Total HTTP requests',
-    ['endpoint', 'status']
+    "http_requests_total", "Total HTTP requests", ["endpoint", "status"]
 )
 
 HTTP_REQUEST_DURATION = Histogram(
-    'http_request_duration_seconds',
-    'HTTP request latency in seconds',
-    ['endpoint']
+    "http_request_duration_seconds", "HTTP request latency in seconds", ["endpoint"]
 )
 
 # MAVLink metrics
 MAVLINK_MESSAGES_TOTAL = Counter(
-    'mavlink_messages_total',
-    'Total MAVLink messages received',
-    ['msg_type']
+    "mavlink_messages_total", "Total MAVLink messages received", ["msg_type"]
 )
 
-MAVLINK_MSG_RATE = Gauge(
-    'mavlink_msg_rate_hz',
-    'MAVLink message rate in Hz'
-)
+MAVLINK_MSG_RATE = Gauge("mavlink_msg_rate_hz", "MAVLink message rate in Hz")
 
-MAVLINK_LINK_STATUS = Gauge(
-    'mavlink_link_status',
-    'MAVLink link status (1=ok, 0=lost)'
-)
+MAVLINK_LINK_STATUS = Gauge("mavlink_link_status", "MAVLink link status (1=ok, 0=lost)")
 
 # CRSF metrics
 CRSF_FRAMES_TOTAL = Counter(
-    'crsf_frames_total',
-    'Total CRSF frames received',
-    ['frame_type']
+    "crsf_frames_total", "Total CRSF frames received", ["frame_type"]
 )
 
-CRSF_CRC_ERRORS = Counter(
-    'crsf_crc_errors_total',
-    'Total CRSF CRC errors'
-)
+CRSF_CRC_ERRORS = Counter("crsf_crc_errors_total", "Total CRSF CRC errors")
 
-CRSF_MSG_RATE = Gauge(
-    'crsf_msg_rate_hz',
-    'CRSF message rate in Hz'
-)
+CRSF_MSG_RATE = Gauge("crsf_msg_rate_hz", "CRSF message rate in Hz")
 
-CRSF_LINK_STATUS = Gauge(
-    'crsf_link_status',
-    'CRSF link status (1=ok, 0=lost)'
-)
+CRSF_LINK_STATUS = Gauge("crsf_link_status", "CRSF link status (1=ok, 0=lost)")
 
-CRSF_RSSI = Gauge(
-    'crsf_rssi_dbm',
-    'CRSF RSSI in dBm'
-)
+CRSF_RSSI = Gauge("crsf_rssi_dbm", "CRSF RSSI in dBm")
 
-CRSF_LQ = Gauge(
-    'crsf_link_quality_percent',
-    'CRSF link quality percentage'
-)
+CRSF_LQ = Gauge("crsf_link_quality_percent", "CRSF link quality percentage")
 
-CRSF_SNR = Gauge(
-    'crsf_snr_db',
-    'CRSF SNR in dB'
-)
+CRSF_SNR = Gauge("crsf_snr_db", "CRSF SNR in dB")
 
 # Decision metrics
 DECISION_LATENCY = Histogram(
-    'decision_latency_seconds',
-    'Decision latency in seconds',
-    ['mode']
+    "decision_latency_seconds", "Decision latency in seconds", ["mode"]
 )
 
-DECISIONS_TOTAL = Counter(
-    'decisions_total',
-    'Total decisions made',
-    ['mode', 'action']
-)
+DECISIONS_TOTAL = Counter("decisions_total", "Total decisions made", ["mode", "action"])
 
 # Safety metrics
 SAFETY_VIOLATIONS = Counter(
-    'safety_violations_total',
-    'Total safety violations',
-    ['category', 'severity']
+    "safety_violations_total", "Total safety violations", ["category", "severity"]
 )
 
 
@@ -160,7 +126,4 @@ def record_safety_violation(category: str, severity: str):
 
 def metrics_endpoint() -> Response:
     """Prometheus metrics endpoint."""
-    return Response(
-        content=generate_latest(),
-        media_type=CONTENT_TYPE_LATEST
-    )
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

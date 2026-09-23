@@ -64,7 +64,13 @@ markers = [
 
 [tool.ruff]
 line-length = 88
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E501", "E731", "F401", "I001", "W292", "W293"]
+"src/dfb/vulkan_engine.py" = ["E501"]  # wrapped C-FFI call sites, T002: no aggressive rewrite
+"src/dfb/grpc/flybrain_pb2.py" = ["E501", "I001", "W292"]  # generated code
+"src/dfb/grpc/flybrain_pb2_grpc.py" = ["E501", "I001", "F401", "W292"]  # generated code
+"src/dfb/grpc/flybrain_pb2.pyi" = ["E501"]  # generated code

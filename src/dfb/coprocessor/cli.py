@@ -2,6 +2,7 @@
 """Interactive CLI for the Giant Fiber coprocessor demo."""
 
 import sys
+
 from src.dfb.coprocessor.bridge import CoprocessorBridge
 from src.dfb.coprocessor.giant_fiber import GiantFiberEscapeCircuit
 
@@ -12,7 +13,10 @@ def run_interactive(mock: bool = True) -> None:
     bridge = CoprocessorBridge(circuit)
 
     print("FlyBrain coprocessor interactive demo (type 'exit' or 'quit' to leave)")
-    print("Telemetry format: [GF Potential: X.XX | Mode: Normal/ESCAPE FIRED | Temp: X.XX]")
+    print(
+        "Telemetry format: "
+        "[GF Potential: X.XX | Mode: Normal/ESCAPE FIRED | Temp: X.XX]"
+    )
     print("-" * 70)
 
     while True:
@@ -42,13 +46,17 @@ def run_interactive(mock: bool = True) -> None:
 
         mode = "ESCAPE FIRED" if status["escape_active"] else "Normal"
         print(
-            f"[GF Potential: {status['membrane_potential']:.2f} | Mode: {mode} | Temp: {payload.temperature:.2f}]"
+            f"[GF Potential: {status['membrane_potential']:.2f} | "
+            f"Mode: {mode} | Temp: {payload.temperature:.2f}]"
         )
 
         # Mock bot response
         if mock:
             if payload.temperature == 0.1:
-                print("Bot: (escape mode) Direct answer: check the service status or restart it.")
+                print(
+                    "Bot: (escape mode) Direct answer: "
+                    "check the service status or restart it."
+                )
             else:
                 print("Bot: Here is a helpful explanation...")
         else:

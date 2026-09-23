@@ -1,4 +1,5 @@
 """CPU fallback decision engine for Fly Brain."""
+
 from dataclasses import dataclass
 from typing import Optional
 
@@ -23,14 +24,18 @@ class CPUEngine:
         # Xavier initialization
         scale1 = np.sqrt(2.0 / self.config.input_size)
         self.W1 = (
-            np.random.randn(self.config.hidden_size, self.config.input_size)
-            .astype(np.float32) * scale1
+            np.random.randn(self.config.hidden_size, self.config.input_size).astype(
+                np.float32
+            )
+            * scale1
         )
         self.b1 = np.zeros(self.config.hidden_size, dtype=np.float32)
         scale2 = np.sqrt(2.0 / self.config.hidden_size)
         self.W2 = (
-            np.random.randn(self.config.output_size, self.config.hidden_size)
-            .astype(np.float32) * scale2
+            np.random.randn(self.config.output_size, self.config.hidden_size).astype(
+                np.float32
+            )
+            * scale2
         )
         self.b2 = np.zeros(self.config.output_size, dtype=np.float32)
 

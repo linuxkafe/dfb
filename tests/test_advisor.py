@@ -1,4 +1,5 @@
 """Unit tests for advisor, safety envelope, and state estimator."""
+
 import time
 
 from src.dfb.advisor import (
@@ -178,8 +179,11 @@ class TestSafetyEnvelope:
         state.up = 5.0
         status = check_safety(state, self.config)
         assert status.safe is False
-        violations = [v for v in status.violations
-                      if v.category == "ALTITUDE" and v.severity == "CRITICAL"]
+        violations = [
+            v
+            for v in status.violations
+            if v.category == "ALTITUDE" and v.severity == "CRITICAL"
+        ]
         assert len(violations) > 0
 
     def test_altitude_ceiling(self):
@@ -189,8 +193,11 @@ class TestSafetyEnvelope:
         state.up = 150.0
         status = check_safety(state, self.config)
         assert status.safe is False
-        violations = [v for v in status.violations
-                      if v.category == "ALTITUDE" and v.severity == "CRITICAL"]
+        violations = [
+            v
+            for v in status.violations
+            if v.category == "ALTITUDE" and v.severity == "CRITICAL"
+        ]
         assert len(violations) > 0
 
     def test_battery_reserve(self):
@@ -344,8 +351,7 @@ class TestAdvisor:
         """Test advisor computes waypoint navigation."""
         state = self._make_safe_state("GUIDED")
         goal = MissionGoal(
-            target_lat=47.501, target_lon=8.501,
-            target_alt=60.0, target_speed=15.0
+            target_lat=47.501, target_lon=8.501, target_alt=60.0, target_speed=15.0
         )
 
         advisory = self.advisor.advise(state, goal)
@@ -360,8 +366,7 @@ class TestAdvisor:
         """Test advisor loiters when at target."""
         state = self._make_safe_state("GUIDED")
         goal = MissionGoal(
-            target_lat=47.5, target_lon=8.5,
-            target_alt=50.0, loiter_radius=100.0
+            target_lat=47.5, target_lon=8.5, target_alt=50.0, loiter_radius=100.0
         )
 
         advisory = self.advisor.advise(state, goal)

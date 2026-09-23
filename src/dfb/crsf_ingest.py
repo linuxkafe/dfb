@@ -3,14 +3,14 @@
 Provides background task that connects to Crossfire/ELRS receiver via serial,
 parses CRSF frames, and maintains telemetry state.
 """
+
 import asyncio
-import time
 import struct
+import time
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import List, Optional
 
 import serial
-
 
 # CRSF protocol constants
 CRSF_HEADER = 0xC8
@@ -38,7 +38,7 @@ def crc8(data) -> int:
             if crc & 0x80:
                 crc = (crc << 1) ^ CRC8_POLY
             else:
-                crc = (crc << 1)
+                crc = crc << 1
             crc &= 0xFF
     return crc
 
@@ -82,6 +82,7 @@ def decode_rc_channels(payload: bytes) -> List[float]:
 @dataclass
 class CRSFTelemetry:
     """Parsed CRSF/ELRS telemetry state."""
+
     timestamp: float = 0.0
     link_ok: bool = False
 
@@ -89,18 +90,18 @@ class CRSFTelemetry:
     channels: List[float] = field(default_factory=lambda: [0.0] * 16)
 
     # Link statistics
-    rssi: Optional[float] = None      # dBm
-    lq: Optional[float] = None        # Link quality 0-100%
-    snr: Optional[float] = None       # dB
-    rf_mode: Optional[int] = None     # ELRS RF mode
+    rssi: Optional[float] = None  # dBm
+    lq: Optional[float] = None  # Link quality 0-100%
+    snr: Optional[float] = None  # dB
+    rf_mode: Optional[int] = None  # ELRS RF mode
 
     # Battery
-    voltage: Optional[float] = None   # V
-    current: Optional[float] = None   # A
+    voltage: Optional[float] = None  # V
+    current: Optional[float] = None  # A
     capacity: Optional[float] = None  # mAh consumed
 
     # GPS
-    gps: Optional[dict] = None        # lat, lon, alt, speed, sats
+    gps: Optional[dict] = None  # lat, lon, alt, speed, sats
 
     # Message counts for diagnostics
     msg_counts: dict[str, int] = field(default_factory=dict)
@@ -127,19 +128,25 @@ class CRSFParser:
             if len(self.buffer) < 2:
                 break
 
-            frame_len = self.buffer[1]  # Length of type + payload (not including header, len, crc)
+            frame_len = self.buffer[
+                1
+            ]  # Length of type + payload (not including header, len, crc)
 
-            # Total frame size = header(1) + len(1) + type(1) + payload(frame_len-1) + crc(1)
+            # Total: header(1) + len(1) + type(1) + payload(frame_len-1) + crc(1)
             total_len = frame_len + 3
 
             if len(self.buffer) < total_len:
                 break
 
             # Extract frame WITHOUT header for CRC check
-            # frame_without_header = len(1) + type(1) + payload(frame_len-1) + crc(1) = frame_len + 2
+            # without header: len(1)+type(1)+payload(frame_len-1)+crc(1) = frame_len+2
             # But CRC covers ONLY type + payload (frame_len bytes)
-            frame_without_header = self.buffer[1:frame_len + 3]  # len + type + payload + crc
-            self.buffer = self.buffer[frame_len + 3:]  # skip header + len + type + payload + crc
+            frame_without_header = self.buffer[
+                1 : frame_len + 3
+            ]  # len + type + payload + crc
+            self.buffer = self.buffer[
+                frame_len + 3 :
+            ]  # skip header + len + type + payload + crc
 
             # Verify CRC (covers ONLY type + payload = frame_len bytes)
             # frame_without_header = len + type + payload + crc
@@ -183,7 +190,9 @@ class CRSFReader:
 
         async def _update():
             async with self._lock:
-                self._state.msg_counts[str(frame_type)] = self._state.msg_counts.get(str(frame_type), 0) + 1
+                self._state.msg_counts[str(frame_type)] = (
+                    self._state.msg_counts.get(str(frame_type), 0) + 1
+                )
                 self._state.timestamp = now
                 self._state.link_ok = True
 
@@ -193,9 +202,9 @@ class CRSFReader:
                 elif frame_type == CRSF_FRAMETYPE_LINK_STATISTICS:
                     # RSSI (int8, dBm), LQ (uint8, %), SNR (int8, dB)
                     if len(payload) >= 3:
-                        self._state.rssi = struct.unpack('b', payload[0:1])[0]
+                        self._state.rssi = struct.unpack("b", payload[0:1])[0]
                         self._state.lq = payload[1]
-                        self._state.snr = struct.unpack('b', payload[2:3])[0]
+                        self._state.snr = struct.unpack("b", payload[2:3])[0]
 
                 elif frame_type == CRSF_FRAMETYPE_ELRS:
                     # ELRS-specific: RF mode, etc.
@@ -203,24 +212,35 @@ class CRSFReader:
                         self._state.rf_mode = payload[0]
 
                 elif frame_type == CRSF_FRAMETYPE_BATTERY:
-                    # Voltage (uint16, 0.01V), Current (uint16, 0.01A), Capacity (uint24, mAh)
+                    # Voltage (uint16, 0.01V), Current (uint16, 0.01A),
+                    # Capacity (uint24, mAh)
                     if len(payload) >= 6:
-                        self._state.voltage = struct.unpack('<H', payload[0:2])[0] / 100.0
-                        self._state.current = struct.unpack('<H', payload[2:4])[0] / 100.0
+                        self._state.voltage = (
+                            struct.unpack("<H", payload[0:2])[0] / 100.0
+                        )
+                        self._state.current = (
+                            struct.unpack("<H", payload[2:4])[0] / 100.0
+                        )
                         # 24-bit capacity
-                        self._state.capacity = struct.unpack('<I', payload[4:7] + b'\x00')[0]
+                        self._state.capacity = struct.unpack(
+                            "<I", payload[4:7] + b"\x00"
+                        )[0]
 
                 elif frame_type == CRSF_FRAMETYPE_GPS:
-                    # lat/lon (int32, 1e-7 deg), alt (int16, m), speed (uint16, cm/s), sats (uint8)
+                    # lat/lon (int32, 1e-7 deg), alt (int16, m),
+                    # speed (uint16), sats (uint8)
                     if len(payload) >= 15:
-                        lat = struct.unpack('<i', payload[0:4])[0] / 1e7
-                        lon = struct.unpack('<i', payload[4:8])[0] / 1e7
-                        alt = struct.unpack('<h', payload[8:10])[0]
-                        speed = struct.unpack('<H', payload[10:12])[0] / 100.0
+                        lat = struct.unpack("<i", payload[0:4])[0] / 1e7
+                        lon = struct.unpack("<i", payload[4:8])[0] / 1e7
+                        alt = struct.unpack("<h", payload[8:10])[0]
+                        speed = struct.unpack("<H", payload[10:12])[0] / 100.0
                         sats = payload[12]
                         self._state.gps = {
-                            'lat': lat, 'lon': lon, 'alt': alt,
-                            'speed': speed, 'satellites': sats
+                            "lat": lat,
+                            "lon": lon,
+                            "alt": alt,
+                            "speed": speed,
+                            "satellites": sats,
                         }
 
         # Run the async update
@@ -244,7 +264,7 @@ class CRSFReader:
                 else:
                     await asyncio.sleep(0.001)  # Small delay to prevent busy loop
 
-            except Exception as e:
+            except Exception:
                 async with self._lock:
                     self._state.link_ok = False
                 if self._serial:
@@ -315,7 +335,9 @@ async def start_crsf_task(
     """Start background CRSF ingestion task. Returns the reader task."""
     global _reader
     if _reader is not None:
-        await stop_crsf_task(asyncio.current_task() or asyncio.create_task(asyncio.sleep(0)))
+        await stop_crsf_task(
+            asyncio.current_task() or asyncio.create_task(asyncio.sleep(0))
+        )
 
     _reader = CRSFReader(device=device, baud=baud)
     await _reader.start()

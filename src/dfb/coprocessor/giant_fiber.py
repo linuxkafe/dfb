@@ -1,4 +1,4 @@
-"""Giant Fiber Escape Circuit implementation for Drosophila-inspired frustration detection."""
+"""Giant Fiber Escape Circuit for Drosophila-inspired frustration detection."""
 
 from collections import deque
 from typing import Optional
@@ -44,7 +44,9 @@ class GiantFiberEscapeCircuit:
         boost += 0.05 * min(caps, 3)
         return min(boost, 0.2)
 
-    def update(self, user_message: str, explicit_feedback: Optional[str] = None) -> float:
+    def update(
+        self, user_message: str, explicit_feedback: Optional[str] = None
+    ) -> float:
         """
         Update membrane potential based on the new user message.
         Returns the new potential value.
@@ -66,7 +68,14 @@ class GiantFiberEscapeCircuit:
                 self.membrane_potential += 0.1
 
         # frustration keywords
-        frustration_words = {"erro", "falha", "não funciona", "nada", "erro de novo", "mesmo erro"}
+        frustration_words = {
+            "erro",
+            "falha",
+            "não funciona",
+            "nada",
+            "erro de novo",
+            "mesmo erro",
+        }
         lower = user_message.lower()
         for w in frustration_words:
             if w in lower:

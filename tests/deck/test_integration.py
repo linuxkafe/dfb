@@ -1,4 +1,5 @@
 """Integration tests against deployed Fly Brain service on Steam Deck (direct LAN)."""
+
 import os
 import time
 from typing import Any, Dict

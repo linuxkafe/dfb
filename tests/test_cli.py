@@ -1,4 +1,5 @@
 """Tests for Fly Brain CLI."""
+
 import json
 from unittest.mock import patch
 
@@ -24,31 +25,96 @@ from src.dfb.client import (
 # Create mock response factories using dataclasses from client module
 # These are JSON serializable via __dict__
 
+
 # Create mock instances with default values
 def MockHealthResponse():
     return HealthResponse(status="ok", version="0.1.0")
+
+
 def MockVersionResponse():
     return VersionResponse(version="0.1.0")
+
+
 def MockDecideResponse():
     return DecideResponse(action="UP", confidence=0.9, logits=[0.1, 0.2, 0.3, 0.4])
+
+
 def MockAdvisoryResponse():
-    return AdvisoryResponse(heading_deg=90.0, altitude_m=50.0, speed_mps=10.0, mode="GUIDED", reason="Navigating", distance_to_target=1000.0, bearing_to_target=90.0)
+    return AdvisoryResponse(
+        heading_deg=90.0,
+        altitude_m=50.0,
+        speed_mps=10.0,
+        mode="GUIDED",
+        reason="Navigating",
+        distance_to_target=1000.0,
+        bearing_to_target=90.0,
+    )
+
+
 def MockSafetyViolationResponse():
-    return SafetyViolationResponse(category="BATTERY", message="Low battery", severity="WARNING", value=15.0, limit=20.0)
+    return SafetyViolationResponse(
+        category="BATTERY",
+        message="Low battery",
+        severity="WARNING",
+        value=15.0,
+        limit=20.0,
+    )
+
+
 def MockSafetyStatusResponse():
-    return SafetyStatusResponse(safe=True, violations=[], warnings=[], battery_pct=80.0, link_ok=True, link_age_s=0.1, gps_fix_type=3, hdop=1.0, vdop=1.0, ground_speed=10.0, climb_rate=0.0, alt_agl=50.0)
+    return SafetyStatusResponse(
+        safe=True,
+        violations=[],
+        warnings=[],
+        battery_pct=80.0,
+        link_ok=True,
+        link_age_s=0.1,
+        gps_fix_type=3,
+        hdop=1.0,
+        vdop=1.0,
+        ground_speed=10.0,
+        climb_rate=0.0,
+        alt_agl=50.0,
+    )
+
+
 def MockTelemetryDecideResponse():
-    return TelemetryDecideResponse(advisory=MockAdvisoryResponse(), safety=MockSafetyStatusResponse())
+    return TelemetryDecideResponse(
+        advisory=MockAdvisoryResponse(), safety=MockSafetyStatusResponse()
+    )
+
+
 def MockTokenResponse():
     return TokenResponse(token="abc12345", expires_in=30.0)
+
+
 def MockCommandResponse():
     return CommandResponse(success=True, message="OK")
+
+
 def MockVerifyResponse():
     return VerifyResponse(valid=True, expires_in=15.0)
+
+
 def MockMAVLinkTelemetryResponse():
-    return MAVLinkTelemetryResponse(timestamp=1234567890.0, link_ok=True, position={"lat": 47.0, "lon": 8.0, "alt": 100.0, "relative_alt": 50.0}, attitude={"roll": 0.1, "pitch": 0.0, "yaw": 1.57}, velocity={"vx": 10.0, "vy": 0.0, "vz": 0.0}, battery={"voltage_v": 12.0, "current_a": 5.0, "remaining_pct": 80.0}, rc_channels=[0.0]*16, message_counts={"HEARTBEAT": 10}, flight_mode="GUIDED", armed=True)
+    return MAVLinkTelemetryResponse(
+        timestamp=1234567890.0,
+        link_ok=True,
+        position={"lat": 47.0, "lon": 8.0, "alt": 100.0, "relative_alt": 50.0},
+        attitude={"roll": 0.1, "pitch": 0.0, "yaw": 1.57},
+        velocity={"vx": 10.0, "vy": 0.0, "vz": 0.0},
+        battery={"voltage_v": 12.0, "current_a": 5.0, "remaining_pct": 80.0},
+        rc_channels=[0.0] * 16,
+        message_counts={"HEARTBEAT": 10},
+        flight_mode="GUIDED",
+        armed=True,
+    )
+
+
 def MockTelemetryResponse():
-    return TelemetryResponse(primary_source="mavlink", mavlink=MockMAVLinkTelemetryResponse())
+    return TelemetryResponse(
+        primary_source="mavlink", mavlink=MockMAVLinkTelemetryResponse()
+    )
 
 
 class TestCLI:
@@ -82,7 +148,13 @@ class TestCLI:
             def decide(self, position, grid, exit):
                 return self._decide_result
 
-            def decide_telemetry(self, target_lat=None, target_lon=None, target_alt=None, target_speed=None):
+            def decide_telemetry(
+                self,
+                target_lat=None,
+                target_lon=None,
+                target_alt=None,
+                target_speed=None,
+            ):
                 return self._decide_telemetry_result
 
             def issue_token(self):
@@ -120,7 +192,13 @@ class TestCLI:
             async def version(self):
                 return MockVersionResponse()
 
-            async def decide_telemetry(self, target_lat=None, target_lon=None, target_alt=None, target_speed=None):
+            async def decide_telemetry(
+                self,
+                target_lat=None,
+                target_lon=None,
+                target_alt=None,
+                target_speed=None,
+            ):
                 return self._decide_telemetry_result
 
             async def issue_token(self):
@@ -160,11 +238,9 @@ class TestCLI:
     def test_decide_maze_command(self, runner, mock_http_client):
         """Test dfb decide command (legacy maze mode)."""
         mock_http_client._decide_result = MockDecideResponse()
-        state_json = json.dumps({
-            "position": [0, 0],
-            "grid": [[0]*10 for _ in range(10)],
-            "exit": [9, 9]
-        })
+        state_json = json.dumps(
+            {"position": [0, 0], "grid": [[0] * 10 for _ in range(10)], "exit": [9, 9]}
+        )
         result = runner.invoke(app, ["decide", state_json])
         assert result.exit_code == 0
         assert "UP" in result.stdout
@@ -179,7 +255,9 @@ class TestCLI:
     def test_decide_telemetry_command(self, runner, mock_http_client):
         """Test dfb decide-telemetry command."""
         mock_http_client._decide_telemetry_result = MockTelemetryDecideResponse()
-        result = runner.invoke(app, ["decide-telemetry", "--lat", "47.001", "--lon", "8.001"])
+        result = runner.invoke(
+            app, ["decide-telemetry", "--lat", "47.001", "--lon", "8.001"]
+        )
         assert result.exit_code == 0
         assert "90.0" in result.stdout
         assert "GUIDED" in result.stdout
@@ -203,7 +281,10 @@ class TestCLI:
     def test_command_with_params(self, runner, mock_http_client):
         """Test dfb command with params."""
         mock_http_client._command_result = MockCommandResponse()
-        result = runner.invoke(app, ["command", "ARM", "--token", "abc12345", "--params", '{"force": true}'])
+        result = runner.invoke(
+            app,
+            ["command", "ARM", "--token", "abc12345", "--params", '{"force": true}'],
+        )
         assert result.exit_code == 0
         assert "OK" in result.stdout
 
@@ -225,11 +306,9 @@ class TestCLI:
     def test_transport_option(self, runner, mock_http_client):
         """Test --transport option."""
         mock_http_client._decide_result = MockDecideResponse()
-        state_json = json.dumps({
-            "position": [0, 0],
-            "grid": [[0]*10 for _ in range(10)],
-            "exit": [9, 9]
-        })
+        state_json = json.dumps(
+            {"position": [0, 0], "grid": [[0] * 10 for _ in range(10)], "exit": [9, 9]}
+        )
         result = runner.invoke(app, ["decide", state_json, "--transport", "http"])
         assert result.exit_code == 0
 
@@ -247,6 +326,7 @@ class TestCLIEnvVars:
         """Test create_client_from_env uses env vars."""
         with patch.dict("os.environ", {"DFB_HOST": "myhost", "DFB_PORT": "9090"}):
             from src.dfb.client import create_client_from_env
+
             client = create_client_from_env()
             assert client.base_url == "http://myhost:9090"
 
@@ -254,5 +334,6 @@ class TestCLIEnvVars:
         """Test create_client_from_env defaults."""
         with patch.dict("os.environ", {}, clear=True):
             from src.dfb.client import create_client_from_env
+
             client = create_client_from_env()
             assert client.base_url == "http://steamdeck:8082"

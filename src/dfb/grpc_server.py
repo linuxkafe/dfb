@@ -1,4 +1,5 @@
 """gRPC server for FlyBrain - runs on port 8083 alongside HTTP/8082."""
+
 import asyncio
 import os
 import signal
@@ -6,8 +7,8 @@ from typing import Optional
 
 import grpc
 
-from src.dfb.grpc_service import FlyBrainServicer
 from src.dfb.grpc import flybrain_pb2_grpc
+from src.dfb.grpc_service import FlyBrainServicer
 
 
 async def create_grpc_server(

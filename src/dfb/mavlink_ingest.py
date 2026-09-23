@@ -3,8 +3,8 @@
 Provides background task that connects to flight controller via MAVLink,
 parses key messages, and maintains thread-safe telemetry state.
 """
+
 import asyncio
-import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -64,14 +64,15 @@ class TelemetryState:
     All fields updated under _lock in MavlinkReader.
     Use get_telemetry_state() for atomic snapshot.
     """
-    timestamp: float = 0.0          # time.time() of last update
-    link_ok: bool = False           # True if received message < 2s ago
+
+    timestamp: float = 0.0  # time.time() of last update
+    link_ok: bool = False  # True if received message < 2s ago
 
     # Position (MAVLink format: degrees * 1e7, mm)
     lat: float = 0.0
     lon: float = 0.0
-    alt: float = 0.0                # mm, absolute
-    relative_alt: float = 0.0       # mm, relative to home
+    alt: float = 0.0  # mm, absolute
+    relative_alt: float = 0.0  # mm, relative to home
 
     # Attitude (radians)
     roll: float = 0.0
@@ -94,7 +95,7 @@ class TelemetryState:
     # Flight mode from HEARTBEAT
     flight_mode: str = "UNKNOWN"
     armed: bool = False
-    autopilot: int = 0              # MAV_AUTOPILOT enum
+    autopilot: int = 0  # MAV_AUTOPILOT enum
 
     # Message counts for diagnostics
     msg_counts: dict[str, int] = field(default_factory=dict)
@@ -134,21 +135,48 @@ class MavlinkReader:
         """Map MAVLink base_mode + custom_mode to standard mode string."""
         # ArduPilot modes
         ardupilot_modes = {
-            0: "STABILIZE", 1: "ACRO", 2: "ALT_HOLD", 3: "AUTO",
-            4: "GUIDED", 5: "LOITER", 6: "RTL", 7: "CIRCLE",
-            9: "LAND", 10: "DRIFT", 11: "SPORT", 13: "DODGE",
-            14: "GUIDED_NOGPS", 15: "SMART_RTL", 16: "FLOWHOLD",
-            17: "FOLLOW", 18: "ZIGZAG", 19: "SYSTEMID",
-            20: "AUTOTUNE", 21: "POSHOLD", 22: "BRAKE",
-            23: "THROW", 24: "AVOID_ADSB", 25: "GUIDED_SLOW",
+            0: "STABILIZE",
+            1: "ACRO",
+            2: "ALT_HOLD",
+            3: "AUTO",
+            4: "GUIDED",
+            5: "LOITER",
+            6: "RTL",
+            7: "CIRCLE",
+            9: "LAND",
+            10: "DRIFT",
+            11: "SPORT",
+            13: "DODGE",
+            14: "GUIDED_NOGPS",
+            15: "SMART_RTL",
+            16: "FLOWHOLD",
+            17: "FOLLOW",
+            18: "ZIGZAG",
+            19: "SYSTEMID",
+            20: "AUTOTUNE",
+            21: "POSHOLD",
+            22: "BRAKE",
+            23: "THROW",
+            24: "AVOID_ADSB",
+            25: "GUIDED_SLOW",
         }
 
         # PX4 modes (simplified)
         px4_modes = {
-            1: "MANUAL", 2: "ALTCTL", 3: "POSCTL", 4: "AUTO_MISSION",
-            5: "AUTO_LOITER", 6: "AUTO_RTL", 7: "ACRO", 8: "OFFBOARD",
-            9: "STABILIZED", 10: "RATTITUDE", 11: "AUTO_TAKEOFF",
-            12: "AUTO_LAND", 13: "AUTO_FOLLOW", 14: "AUTO_PRECLAND",
+            1: "MANUAL",
+            2: "ALTCTL",
+            3: "POSCTL",
+            4: "AUTO_MISSION",
+            5: "AUTO_LOITER",
+            6: "AUTO_RTL",
+            7: "ACRO",
+            8: "OFFBOARD",
+            9: "STABILIZED",
+            10: "RATTITUDE",
+            11: "AUTO_TAKEOFF",
+            12: "AUTO_LAND",
+            13: "AUTO_FOLLOW",
+            14: "AUTO_PRECLAND",
         }
 
         if autopilot == 3:  # ArduPilot
@@ -184,15 +212,21 @@ class MavlinkReader:
         now = time.time()
 
         with self._lock:
-            self._state.msg_counts[msg_type] = self._state.msg_counts.get(msg_type, 0) + 1
+            self._state.msg_counts[msg_type] = (
+                self._state.msg_counts.get(msg_type, 0) + 1
+            )
             self._state.timestamp = now
             self._state.link_ok = True
 
             if msg_type == "HEARTBEAT":
                 # Extract flight mode and armed status
-                self._state.armed = bool(msg.base_mode & 0x80)  # MAV_MODE_FLAG_SAFETY_ARMED
+                self._state.armed = bool(
+                    msg.base_mode & 0x80
+                )  # MAV_MODE_FLAG_SAFETY_ARMED
                 self._state.autopilot = msg.autopilot
-                self._state.flight_mode = self._map_flight_mode(msg.base_mode, msg.custom_mode, msg.autopilot)
+                self._state.flight_mode = self._map_flight_mode(
+                    msg.base_mode, msg.custom_mode, msg.autopilot
+                )
 
             elif msg_type == "ATTITUDE":
                 self._state.roll = msg.roll
@@ -225,8 +259,10 @@ class MavlinkReader:
             elif msg_type == "RC_CHANNELS":
                 # Normalize PWM (typically 1000-2000) to -1..1
                 for i in range(min(16, len(msg.chan_raw))):
-                    pwm = getattr(msg, f"chan{i+1}_raw", 1500)
-                    self._state.rc_channels[i] = max(-1.0, min(1.0, (pwm - 1500) / 500.0))
+                    pwm = getattr(msg, f"chan{i + 1}_raw", 1500)
+                    self._state.rc_channels[i] = max(
+                        -1.0, min(1.0, (pwm - 1500) / 500.0)
+                    )
 
     def _reader_loop(self) -> None:
         """Blocking reader loop - runs in thread pool."""
@@ -248,7 +284,7 @@ class MavlinkReader:
                         if time.time() - self._state.timestamp > self._link_timeout:
                             self._state.link_ok = False
 
-            except Exception as e:
+            except Exception:
                 # Connection error - trigger reconnect
                 with self._lock:
                     self._state.link_ok = False
@@ -340,7 +376,9 @@ async def start_mavlink_task(
     """Start background MAVLink ingestion task. Returns the reader task."""
     global _reader
     if _reader is not None:
-        await stop_mavlink_task(asyncio.current_task() or asyncio.create_task(asyncio.sleep(0)))
+        await stop_mavlink_task(
+            asyncio.current_task() or asyncio.create_task(asyncio.sleep(0))
+        )
 
     _reader = MavlinkReader(
         device=device,

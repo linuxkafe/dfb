@@ -1,4 +1,5 @@
 """Unit tests for MAVLink telemetry ingestion."""
+
 import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -76,11 +77,11 @@ class TestMavlinkReader:
         # MAVLink: lat/lon in degrees * 1e7, alt in mm
         msg = self._make_msg(
             "GLOBAL_POSITION_INT",
-            lat=471234567,   # 47.1234567 deg
-            lon=81234567,    # 8.1234567 deg
-            alt=100000,      # 100m = 100000mm
+            lat=471234567,  # 47.1234567 deg
+            lon=81234567,  # 8.1234567 deg
+            alt=100000,  # 100m = 100000mm
             relative_alt=50000,  # 50m = 50000mm
-            vx=100,          # 1 m/s = 100 cm/s
+            vx=100,  # 1 m/s = 100 cm/s
             vy=200,
             vz=-50,
         )
@@ -125,7 +126,7 @@ class TestMavlinkReader:
         )
         # Set individual channel attributes
         for i, val in enumerate([1000, 1500, 2000, 1250, 1750] + [1500] * 11):
-            setattr(msg, f"chan{i+1}_raw", val)
+            setattr(msg, f"chan{i + 1}_raw", val)
 
         self.reader._parse_message(msg)
         state = self.reader.get_state()
@@ -213,6 +214,7 @@ class TestModuleAPI:
         """get_telemetry_state returns default state when no reader."""
         # Ensure global _reader is None
         import src.dfb.mavlink_ingest as mavlink_ingest
+
         original_reader = mavlink_ingest._reader
         mavlink_ingest._reader = None
         try:

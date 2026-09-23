@@ -3,6 +3,7 @@
 Endpoints: /health, /version, /decide, /telemetry, /metrics,
            /confirm/issue, /command, /confirm/verify.
 """
+
 import asyncio
 import os
 import time
@@ -62,6 +63,7 @@ _last_crsf_msg_time: float = 0.0
 @dataclass
 class UnifiedTelemetryState:
     """Unified telemetry state combining MAVLink and CRSF sources."""
+
     mavlink: Optional[TelemetryState] = None
     crsf: Optional[object] = None  # CRSFTelemetry (avoid circular import)
     primary_source: Literal["mavlink", "crsf", "none"] = "none"
@@ -176,8 +178,8 @@ async def _watchdog_loop():
             telemetry = get_telemetry_state()
             now = time.time()
             link_age = (
-            now - telemetry.timestamp if telemetry.timestamp > 0 else float("inf")
-        )
+                now - telemetry.timestamp if telemetry.timestamp > 0 else float("inf")
+            )
 
             # Update metrics
             update_mavlink_link_status(telemetry.link_ok)
@@ -187,11 +189,14 @@ async def _watchdog_loop():
 
             # Check if MAVLink task is alive
             if link_age > 10.0:
-                log_mavlink_event("watchdog_restart", {
-                    "reason": "link_stale",
-                    "link_age_s": link_age,
-                    "last_msg_counts": telemetry.msg_counts,
-                })
+                log_mavlink_event(
+                    "watchdog_restart",
+                    {
+                        "reason": "link_stale",
+                        "link_age_s": link_age,
+                        "last_msg_counts": telemetry.msg_counts,
+                    },
+                )
                 # Restart MAVLink task
                 # Note: This would require access to the task from lifespan
                 # For now, just log the event
@@ -199,9 +204,13 @@ async def _watchdog_loop():
 
             # Check decision engine responsiveness
             if _last_decision_time > 0 and (now - _last_decision_time) > 30.0:
-                log_component_health("decision_engine", "degraded", {
-                    "last_decision_age_s": now - _last_decision_time,
-                })
+                log_component_health(
+                    "decision_engine",
+                    "degraded",
+                    {
+                        "last_decision_age_s": now - _last_decision_time,
+                    },
+                )
 
         except asyncio.CancelledError:
             break
@@ -455,12 +464,24 @@ async def _decide_telemetry(payload: DecideRequest) -> DecideResponse:
     if advisory.safety:
         s = advisory.safety
         violations = [
-            {"category": v.category, "message": v.message, "severity": v.severity,
-             "value": v.value, "limit": v.limit} for v in s.violations
+            {
+                "category": v.category,
+                "message": v.message,
+                "severity": v.severity,
+                "value": v.value,
+                "limit": v.limit,
+            }
+            for v in s.violations
         ]
         warnings = [
-            {"category": v.category, "message": v.message, "severity": v.severity,
-             "value": v.value, "limit": v.limit} for v in s.warnings
+            {
+                "category": v.category,
+                "message": v.message,
+                "severity": v.severity,
+                "value": v.value,
+                "limit": v.limit,
+            }
+            for v in s.warnings
         ]
         safety_resp = SafetyStatusResponse(
             safe=s.safe,
@@ -540,8 +561,7 @@ async def confirm_issue():
 
 @app.post("/command", response_model=CommandResponse)
 async def command(
-    payload: CommandRequest,
-    x_confirmation_token: Optional[str] = Header(None)
+    payload: CommandRequest, x_confirmation_token: Optional[str] = Header(None)
 ):
     """
     Safety-critical command endpoint. Requires valid X-Confirmation-Token header.
@@ -561,8 +581,7 @@ async def command(
     # In a real system, this would send MAVLink commands to the flight controller
     # For now, just acknowledge
     return CommandResponse(
-        success=True,
-        message=f"Command '{payload.action}' acknowledged (simulated)"
+        success=True, message=f"Command '{payload.action}' acknowledged (simulated)"
     )
 
 
@@ -577,4 +596,5 @@ async def confirm_verify(token: str):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8082)

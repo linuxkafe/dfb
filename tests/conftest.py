@@ -12,12 +12,14 @@ sys.path.insert(0, str(project_root))
 @pytest.fixture
 def mock_mavlink_message():
     """Create a mock MAVLink message with configurable type and fields."""
+
     def _make_msg(msg_type: str, **kwargs):
         msg = MagicMock()
         msg.get_type.return_value = msg_type
         for k, v in kwargs.items():
             setattr(msg, k, v)
         return msg
+
     return _make_msg
 
 

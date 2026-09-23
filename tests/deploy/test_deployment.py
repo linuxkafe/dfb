@@ -4,6 +4,7 @@ These tests validate the deployment artifacts (systemd unit, deploy script,
 port/env consistency) and prove the deployed app boots — all WITHOUT Steam Deck
 hardware. They prepare for Sprint 03 hardware validation (T010/T011).
 """
+
 import os
 import re
 import shutil
@@ -148,7 +149,7 @@ class TestDeploymentConsistency:
 
     def test_service_py_grpc_port_env(self):
         text = SERVICE_MODULE.read_text()
-        assert 'GRPC_PORT' in text
+        assert "GRPC_PORT" in text
         assert EXPECTED_GRPC_PORT in text
 
     def test_deploy_script_port_matches(self):
@@ -182,8 +183,14 @@ class TestDeployScriptIntegrity:
 
     def test_script_sources(self):
         text = DEPLOY_SCRIPT.read_text()
-        for rel in ["src/", "sim/", "shaders/", "pyproject.toml", "Makefile",
-                    "deploy/flybrain.service"]:
+        for rel in [
+            "src/",
+            "sim/",
+            "shaders/",
+            "pyproject.toml",
+            "Makefile",
+            "deploy/flybrain.service",
+        ]:
             assert rel in text, f"deploy script does not sync {rel}"
 
     def test_synced_paths_exist(self):
@@ -226,15 +233,24 @@ class TestSmokeBoot:
         http_port = _free_port()
         grpc_port = _free_port()
         env = os.environ.copy()
-        env.update({
-            "TELEMETRY_PROTOCOL": "none",
-            "GRPC_PORT": str(grpc_port),
-            "PYTHONUNBUFFERED": "1",
-        })
+        env.update(
+            {
+                "TELEMETRY_PROTOCOL": "none",
+                "GRPC_PORT": str(grpc_port),
+                "PYTHONUNBUFFERED": "1",
+            }
+        )
         proc = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn",
-             "src.dfb.service:app",
-             "--host", "127.0.0.1", "--port", str(http_port)],
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "src.dfb.service:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(http_port),
+            ],
             cwd=REPO_ROOT,
             env=env,
             stdout=subprocess.PIPE,

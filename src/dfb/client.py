@@ -1,10 +1,10 @@
 """Typed client for Deck Fly Brain service."""
+
 import os
-import json
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 import requests
-import numpy as np
 
 if TYPE_CHECKING:
     import grpc
@@ -180,15 +180,14 @@ class GrpcDeckClient:
                     f"{self.host}:{self.port}", credentials
                 )
             else:
-                self._channel = grpc.aio.insecure_channel(
-                    f"{self.host}:{self.port}"
-                )
+                self._channel = grpc.aio.insecure_channel(f"{self.host}:{self.port}")
         return self._channel
 
     async def _get_stub(self):
         if self._stub is None:
             channel = await self._get_channel()
             from src.dfb.grpc import flybrain_pb2_grpc
+
             self._stub = flybrain_pb2_grpc.FlyBrainServiceStub(channel)
         return self._stub
 
@@ -201,18 +200,21 @@ class GrpcDeckClient:
     async def health(self) -> HealthResponse:
         stub = await self._get_stub()
         from src.dfb.grpc import flybrain_pb2
+
         response = await stub.GetHealth(flybrain_pb2.HealthRequest())
         return HealthResponse(status=response.status, version=response.version)
 
     async def version(self) -> VersionResponse:
         stub = await self._get_stub()
         from src.dfb.grpc import flybrain_pb2
+
         response = await stub.GetVersion(flybrain_pb2.VersionRequest())
         return VersionResponse(version=response.version)
 
     async def telemetry(self) -> TelemetryResponse:
         stub = await self._get_stub()
         from src.dfb.grpc import flybrain_pb2
+
         response = await stub.GetTelemetry(flybrain_pb2.TelemetryRequest())
         return self._convert_telemetry(response)
 
@@ -328,6 +330,7 @@ class GrpcDeckClient:
     async def issue_token(self) -> TokenResponse:
         stub = await self._get_stub()
         from src.dfb.grpc import flybrain_pb2
+
         response = await stub.IssueToken(flybrain_pb2.TokenRequest())
         return TokenResponse(token=response.token, expires_in=response.expires_in)
 
@@ -339,6 +342,7 @@ class GrpcDeckClient:
     ) -> CommandResponse:
         stub = await self._get_stub()
         from src.dfb.grpc import flybrain_pb2
+
         request = flybrain_pb2.CommandRequest(
             action=action,
             params=params or {},
@@ -349,14 +353,9 @@ class GrpcDeckClient:
     async def verify_token(self, token: str) -> VerifyResponse:
         stub = await self._get_stub()
         from src.dfb.grpc import flybrain_pb2
+
         response = await stub.VerifyToken(flybrain_pb2.VerifyRequest(token=token))
         return VerifyResponse(valid=response.valid, expires_in=response.expires_in)
-
-    async def close(self):
-        if self._channel:
-            await self._channel.close()
-            self._channel = None
-            self._stub = None
 
 
 class HttpDeckClient:
@@ -378,7 +377,12 @@ class HttpDeckClient:
         resp.raise_for_status()
         return resp.json()
 
-    def _post(self, path: str, payload: Dict[str, Any], headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    def _post(
+        self,
+        path: str,
+        payload: Dict[str, Any],
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
         resp = self.session.post(
             f"{self.base_url}{path}",
             json=payload,

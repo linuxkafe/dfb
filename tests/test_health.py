@@ -1,4 +1,5 @@
 """Unit tests for health, metrics, and watchdog functionality."""
+
 import asyncio
 import time
 from unittest.mock import MagicMock, patch
@@ -157,6 +158,7 @@ class TestMetricsRecording:
         from src.dfb.metrics import (
             record_http_request,
         )
+
         # Reset for test
         record_http_request("/test", 200, 0.1)
         # Just verify no exception
@@ -164,24 +166,29 @@ class TestMetricsRecording:
     def test_record_mavlink_message(self):
         """Test MAVLink message metrics recording."""
         from src.dfb.metrics import record_mavlink_message
+
         record_mavlink_message("HEARTBEAT")
         # Just verify no exception
 
     def test_update_mavlink_link_status(self):
         """Test MAVLink link status gauge update."""
         from src.dfb.metrics import update_mavlink_link_status
+
         update_mavlink_link_status(True)
         update_mavlink_link_status(False)
 
     def test_record_decision(self):
         """Test decision metrics recording."""
         from src.dfb.metrics import record_decision
+
         record_decision("telemetry", "GUIDED", 0.01)
 
     def test_record_safety_violation(self):
         """Test safety violation metrics recording."""
         from src.dfb.metrics import record_safety_violation
+
         record_safety_violation("BATTERY", "CRITICAL")
+
 
 def test_metrics_endpoint_function():
     """Test metrics endpoint function directly."""
@@ -233,27 +240,31 @@ class TestStructuredLogging:
     def test_setup_logging(self):
         """Test logging setup."""
         from src.dfb.logging import setup_logging
+
         setup_logging("DEBUG")
         # Just verify no exception
 
     def test_correlation_id(self):
         """Test correlation ID context variable."""
         from src.dfb.logging import get_correlation_id, set_correlation_id
+
         set_correlation_id("test-123")
         assert get_correlation_id() == "test-123"
 
     def test_log_request(self):
         """Test request logging."""
         from src.dfb.logging import log_request
+
         log_request("/test", "GET", 200, 10.5, "corr-123")
 
     def test_log_component_health(self):
         """Test component health logging."""
         from src.dfb.logging import log_component_health
+
         log_component_health("test_component", "ok", {"detail": "value"})
 
     def test_log_mavlink_event(self):
         """Test MAVLink event logging."""
         from src.dfb.logging import log_mavlink_event
-        log_mavlink_event("connect", {"device": "/dev/ttyACM0"})
 
+        log_mavlink_event("connect", {"device": "/dev/ttyACM0"})

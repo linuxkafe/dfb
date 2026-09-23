@@ -1,11 +1,10 @@
 """Vulkan compute engine for Fly Brain decision inference (optional, graceful degradation)."""
-import os
 import ctypes
-import numpy as np
-from pathlib import Path
-from typing import Optional, Tuple, List
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
+import numpy as np
 
 # Vulkan constants
 VK_API_VERSION_1_0 = 0  # Use 0 to let loader pick default
@@ -61,7 +60,7 @@ VK_WHOLE_SIZE = 0xFFFFFFFFFFFFFFFF
 def load_vulkan():
     """Load libvulkan.so and define function signatures. Returns None if Vulkan unavailable."""
     global _VULKAN_AVAILABLE, _VULKAN_ERROR
-    
+
     try:
         lib = ctypes.CDLL("libvulkan.so.1")
     except OSError:

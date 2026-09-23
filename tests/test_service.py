@@ -1,4 +1,5 @@
 """Tests for Fly Brain HTTP service endpoints."""
+
 import time
 from unittest.mock import MagicMock, patch
 
@@ -31,7 +32,10 @@ class TestServiceEndpoints:
     def test_health_endpoint(self, client):
         """Test /health endpoint returns status and components."""
         with patch("src.dfb.service.get_overall_health") as mock_health:
-            mock_health.return_value = ("ok", {"cpu_engine": {"status": "ok", "details": {}}})
+            mock_health.return_value = (
+                "ok",
+                {"cpu_engine": {"status": "ok", "details": {}}},
+            )
             response = client.get("/health")
             assert response.status_code == 200
             data = response.json()
@@ -53,18 +57,44 @@ class TestServiceEndpoints:
 
     def test_telemetry_endpoint(self, client):
         """Test /telemetry endpoint returns unified telemetry."""
-        with patch("src.dfb.service.get_telemetry_state") as mock_mavlink, \
-             patch("src.dfb.service.get_crsf_state") as mock_crsf:
+        with (
+            patch("src.dfb.service.get_telemetry_state") as mock_mavlink,
+            patch("src.dfb.service.get_crsf_state") as mock_crsf,
+        ):
             mock_mavlink.return_value = MagicMock(
-                timestamp=time.time(), link_ok=True, lat=47.0, lon=8.0,
-                alt=100000, relative_alt=50000, roll=0.1, pitch=0.0, yaw=1.57,
-                vx=100, vy=0, vz=0, voltage_v=12.0, current_a=5.0, remaining_pct=80.0,
-                rc_channels=[0.0]*16, msg_counts={}, flight_mode="GUIDED", armed=True
+                timestamp=time.time(),
+                link_ok=True,
+                lat=47.0,
+                lon=8.0,
+                alt=100000,
+                relative_alt=50000,
+                roll=0.1,
+                pitch=0.0,
+                yaw=1.57,
+                vx=100,
+                vy=0,
+                vz=0,
+                voltage_v=12.0,
+                current_a=5.0,
+                remaining_pct=80.0,
+                rc_channels=[0.0] * 16,
+                msg_counts={},
+                flight_mode="GUIDED",
+                armed=True,
             )
             mock_crsf.return_value = MagicMock(
-                timestamp=time.time(), link_ok=True, channels=[0.0]*16,
-                rssi=-50, lq=90, snr=10, rf_mode=0, voltage=12.0, current=5.0,
-                capacity=1000, gps=None, msg_counts={}
+                timestamp=time.time(),
+                link_ok=True,
+                channels=[0.0] * 16,
+                rssi=-50,
+                lq=90,
+                snr=10,
+                rf_mode=0,
+                voltage=12.0,
+                current=5.0,
+                capacity=1000,
+                gps=None,
+                msg_counts={},
             )
             response = client.get("/telemetry")
             assert response.status_code == 200
@@ -77,12 +107,15 @@ class TestServiceEndpoints:
     def test_decide_maze_mode(self, client):
         """Test /decide endpoint in legacy maze mode."""
         import numpy as np
+
         with patch("src.dfb.service.get_cpu_engine") as mock_engine:
-            mock_engine.return_value.compute.return_value = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+            mock_engine.return_value.compute.return_value = np.array(
+                [0.1, 0.2, 0.3, 0.4], dtype=np.float32
+            )
             payload = {
                 "position": [0, 0],
-                "grid": [[0]*10 for _ in range(10)],
-                "exit": [9, 9]
+                "grid": [[0] * 10 for _ in range(10)],
+                "exit": [9, 9],
             }
             response = client.post("/decide", json=payload)
             assert response.status_code == 200
@@ -93,31 +126,74 @@ class TestServiceEndpoints:
 
     def test_decide_telemetry_mode(self, client):
         """Test /decide endpoint in telemetry-aware mode."""
-        with patch("src.dfb.service.get_telemetry_state") as mock_mavlink, \
-             patch("src.dfb.service.get_crsf_state") as mock_crsf, \
-             patch("src.dfb.service.estimate_state") as mock_estimate, \
-             patch("src.dfb.service.get_advisor") as mock_advisor:
-
+        with (
+            patch("src.dfb.service.get_telemetry_state") as mock_mavlink,
+            patch("src.dfb.service.get_crsf_state") as mock_crsf,
+            patch("src.dfb.service.estimate_state") as mock_estimate,
+            patch("src.dfb.service.get_advisor") as mock_advisor,
+        ):
             mock_mavlink.return_value = MagicMock(
-                timestamp=time.time(), link_ok=True, lat=47.0, lon=8.0,
-                alt=100000, relative_alt=50000, roll=0.1, pitch=0.0, yaw=1.57,
-                vx=100, vy=0, vz=0, remaining_pct=80.0, flight_mode="GUIDED", armed=True
+                timestamp=time.time(),
+                link_ok=True,
+                lat=47.0,
+                lon=8.0,
+                alt=100000,
+                relative_alt=50000,
+                roll=0.1,
+                pitch=0.0,
+                yaw=1.57,
+                vx=100,
+                vy=0,
+                vz=0,
+                remaining_pct=80.0,
+                flight_mode="GUIDED",
+                armed=True,
             )
             mock_crsf.return_value = MagicMock(link_ok=False)
             mock_estimate.return_value = MagicMock(
-                valid=True, up=50.0, ve=10.0, vn=0.0, vu=0.0, yaw=1.57,
-                roll=0.0, pitch=0.0, flight_mode="GUIDED", armed=True,
-                gps_fix_type=3, hdop=1.0, vdop=1.0,
-                _raw=MagicMock(lat=47.0, lon=8.0, remaining_pct=80.0, link_ok=True, timestamp=time.time())
+                valid=True,
+                up=50.0,
+                ve=10.0,
+                vn=0.0,
+                vu=0.0,
+                yaw=1.57,
+                roll=0.0,
+                pitch=0.0,
+                flight_mode="GUIDED",
+                armed=True,
+                gps_fix_type=3,
+                hdop=1.0,
+                vdop=1.0,
+                _raw=MagicMock(
+                    lat=47.0,
+                    lon=8.0,
+                    remaining_pct=80.0,
+                    link_ok=True,
+                    timestamp=time.time(),
+                ),
             )
             mock_advisor.return_value.advise.return_value = MagicMock(
-                heading_deg=90.0, altitude_m=50.0, speed_mps=10.0,
-                mode="GUIDED", reason="Navigating to target",
-                distance_to_target=1000.0, bearing_to_target=90.0,
-                safety=MagicMock(safe=True, violations=[], warnings=[],
-                                battery_pct=80.0, link_ok=True, link_age_s=0.1,
-                                gps_fix_type=3, hdop=1.0, vdop=1.0,
-                                ground_speed=10.0, climb_rate=0.0, alt_agl=50.0)
+                heading_deg=90.0,
+                altitude_m=50.0,
+                speed_mps=10.0,
+                mode="GUIDED",
+                reason="Navigating to target",
+                distance_to_target=1000.0,
+                bearing_to_target=90.0,
+                safety=MagicMock(
+                    safe=True,
+                    violations=[],
+                    warnings=[],
+                    battery_pct=80.0,
+                    link_ok=True,
+                    link_age_s=0.1,
+                    gps_fix_type=3,
+                    hdop=1.0,
+                    vdop=1.0,
+                    ground_speed=10.0,
+                    climb_rate=0.0,
+                    alt_agl=50.0,
+                ),
             )
 
             payload = {
@@ -125,7 +201,7 @@ class TestServiceEndpoints:
                 "target_lat": 47.001,
                 "target_lon": 8.001,
                 "target_alt": 50.0,
-                "target_speed": 10.0
+                "target_speed": 10.0,
             }
             response = client.post("/decide", json=payload)
             assert response.status_code == 200
@@ -191,7 +267,7 @@ class TestCommandEndpoint:
         response = client.post(
             "/command",
             json={"action": "ARM"},
-            headers={"X-Confirmation-Token": "invalid123"}
+            headers={"X-Confirmation-Token": "invalid123"},
         )
         assert response.status_code == 403
         assert "Invalid or expired" in response.json()["detail"]
@@ -206,7 +282,7 @@ class TestCommandEndpoint:
         response = client.post(
             "/command",
             json={"action": "ARM", "params": {}},
-            headers={"X-Confirmation-Token": token}
+            headers={"X-Confirmation-Token": token},
         )
         assert response.status_code == 200
         data = response.json()
@@ -220,15 +296,15 @@ class TestCommandEndpoint:
 
         # First use succeeds
         response1 = client.post(
-            "/command", json={"action": "ARM"},
-            headers={"X-Confirmation-Token": token}
+            "/command", json={"action": "ARM"}, headers={"X-Confirmation-Token": token}
         )
         assert response1.status_code == 200
 
         # Second use fails (token consumed)
         response2 = client.post(
-            "/command", json={"action": "DISARM"},
-            headers={"X-Confirmation-Token": token}
+            "/command",
+            json={"action": "DISARM"},
+            headers={"X-Confirmation-Token": token},
         )
         assert response2.status_code == 403
 
@@ -236,8 +312,9 @@ class TestCommandEndpoint:
         """Test token expires after TTL."""
         _confirmation_tokens["old_token"] = time.time() - 60  # Expired
         response = client.post(
-            "/command", json={"action": "ARM"},
-            headers={"X-Confirmation-Token": "old_token"}
+            "/command",
+            json={"action": "ARM"},
+            headers={"X-Confirmation-Token": "old_token"},
         )
         assert response.status_code == 403
 
@@ -272,17 +349,19 @@ class TestWatchdogLoop:
 
     def test_watchdog_checks_mavlink_link_age(self):
         """Test watchdog detects stale MAVLink link."""
-        with patch("src.dfb.service.get_telemetry_state") as mock_telemetry, \
-             patch("src.dfb.service.log_mavlink_event"), \
-             patch("src.dfb.service.update_mavlink_link_status"), \
-             patch("src.dfb.service.update_mavlink_rate"), \
-             patch("src.dfb.service.time") as mock_time:
+        with (
+            patch("src.dfb.service.get_telemetry_state") as mock_telemetry,
+            patch("src.dfb.service.log_mavlink_event"),
+            patch("src.dfb.service.update_mavlink_link_status"),
+            patch("src.dfb.service.update_mavlink_rate"),
+            patch("src.dfb.service.time") as mock_time,
+        ):
             # Set up time to return controlled values
             mock_time.time.return_value = 1000.0
             mock_telemetry.return_value = MagicMock(
                 timestamp=985.0,  # 15 seconds ago
                 link_ok=False,
-                msg_counts={"HEARTBEAT": 10}
+                msg_counts={"HEARTBEAT": 10},
             )
             # Test the logic directly
             telemetry = mock_telemetry.return_value
@@ -294,20 +373,21 @@ class TestWatchdogLoop:
     def test_watchdog_checks_decision_engine_responsiveness(self):
         """Test watchdog detects stale decision engine."""
         import src.dfb.service as service_module
+
         # Use fixed time values to avoid real time issues
         fixed_now = 1000.0
         service_module._last_decision_time = fixed_now - 60  # 60 seconds ago
 
-        with patch("src.dfb.service.get_telemetry_state") as mock_telemetry, \
-             patch("src.dfb.service.log_component_health"), \
-             patch("src.dfb.service.update_mavlink_link_status"), \
-             patch("src.dfb.service.update_mavlink_rate"), \
-             patch("src.dfb.service.time") as mock_time:
+        with (
+            patch("src.dfb.service.get_telemetry_state") as mock_telemetry,
+            patch("src.dfb.service.log_component_health"),
+            patch("src.dfb.service.update_mavlink_link_status"),
+            patch("src.dfb.service.update_mavlink_rate"),
+            patch("src.dfb.service.time") as mock_time,
+        ):
             mock_time.time.return_value = fixed_now
             mock_telemetry.return_value = MagicMock(
-                timestamp=fixed_now,
-                link_ok=True,
-                msg_counts={"HEARTBEAT": 10}
+                timestamp=fixed_now, link_ok=True, msg_counts={"HEARTBEAT": 10}
             )
 
             now = fixed_now
@@ -323,6 +403,7 @@ class TestLifespan:
         # Test the get_cpu_engine function directly since lifespan
         # integration is complex due to middleware already added
         from src.dfb.cpu_engine import get_cpu_engine
+
         engine = get_cpu_engine()
         assert engine is not None
         assert engine._initialized is True
@@ -343,7 +424,9 @@ class TestRequestMiddleware:
         """Test request logging includes correlation ID."""
         with patch("src.dfb.service.log_request") as mock_log:
             with patch("src.dfb.service.get_overall_health"):
-                response = client.get("/health", headers={"X-Correlation-ID": "test-123"})
+                response = client.get(
+                    "/health", headers={"X-Correlation-ID": "test-123"}
+                )
                 assert response.status_code == 200
                 mock_log.assert_called()
                 # Check correlation ID passed to log

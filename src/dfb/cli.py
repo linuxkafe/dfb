@@ -1,18 +1,15 @@
 """CLI for Deck Fly Brain."""
+
 import json
-import sys
-from dataclasses import is_dataclass, asdict
-from typing import Optional, List
+from dataclasses import asdict, is_dataclass
+from typing import Optional
+
 import typer
-import numpy as np
 from rich import print_json
 
-from .client import HttpDeckClient, GrpcDeckClient, create_client_from_env
 from .client import (
-    HealthResponse, VersionResponse, DecideResponse,
-    AdvisoryResponse, SafetyViolationResponse, SafetyStatusResponse,
-    TelemetryDecideResponse, TokenResponse, CommandResponse, VerifyResponse,
-    MAVLinkTelemetryResponse, TelemetryResponse
+    GrpcDeckClient,
+    HttpDeckClient,
 )
 
 
@@ -34,7 +31,9 @@ app = typer.Typer(help="Deck Fly Brain CLI")
 def get_client(
     host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
     port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),
-    transport: str = typer.Option("http", "--transport", "-t", help="Transport protocol: http or grpc"),
+    transport: str = typer.Option(
+        "http", "--transport", "-t", help="Transport protocol: http or grpc"
+    ),
 ) -> "HttpDeckClient | GrpcDeckClient":
     host = host or "steamdeck"
     port = port or (8083 if transport == "grpc" else 8082)
@@ -67,10 +66,14 @@ def version(
 
 @app.command()
 def decide(
-    state: str = typer.Argument(..., help="JSON state: {\"position\":[x,y],\"grid\":[[...]],\"exit\":[ex,ey]}"),
+    state: str = typer.Argument(
+        ..., help='JSON state: {"position":[x,y],"grid":[[...]],"exit":[ex,ey]}'
+    ),
     host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
     port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),
-    transport: str = typer.Option("http", "--transport", "-t", help="Transport protocol: http or grpc"),
+    transport: str = typer.Option(
+        "http", "--transport", "-t", help="Transport protocol: http or grpc"
+    ),
 ):
     """Ask the service for a decision given a maze state (legacy mode, HTTP only)."""
     client = get_client(host, port, transport)
@@ -92,10 +95,18 @@ def decide(
 
 @app.command("decide-telemetry")
 def decide_telemetry(
-    target_lat: Optional[float] = typer.Option(None, "--lat", help="Target latitude (degrees)"),
-    target_lon: Optional[float] = typer.Option(None, "--lon", help="Target longitude (degrees)"),
-    target_alt: Optional[float] = typer.Option(None, "--alt", help="Target altitude AGL (meters)"),
-    target_speed: Optional[float] = typer.Option(None, "--speed", help="Target ground speed (m/s)"),
+    target_lat: Optional[float] = typer.Option(
+        None, "--lat", help="Target latitude (degrees)"
+    ),
+    target_lon: Optional[float] = typer.Option(
+        None, "--lon", help="Target longitude (degrees)"
+    ),
+    target_alt: Optional[float] = typer.Option(
+        None, "--alt", help="Target altitude AGL (meters)"
+    ),
+    target_speed: Optional[float] = typer.Option(
+        None, "--speed", help="Target ground speed (m/s)"
+    ),
     host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
     port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),
 ):
@@ -124,7 +135,9 @@ def issue_token(
 @app.command()
 def command(
     action: str = typer.Argument(..., help="Action name, e.g. ARM"),
-    token: str = typer.Option(..., "--token", "-t", help="Confirmation token from issue-token"),
+    token: str = typer.Option(
+        ..., "--token", "-t", help="Confirmation token from issue-token"
+    ),
     params: Optional[str] = typer.Option(None, "--params", help="JSON params dict"),
     host: Optional[str] = typer.Option(None, "--host", "-h", envvar="DFB_HOST"),
     port: Optional[int] = typer.Option(None, "--port", "-p", envvar="DFB_PORT"),

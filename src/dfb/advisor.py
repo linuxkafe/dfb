@@ -3,22 +3,29 @@
 Converts estimated state + mission goal into continuous advisory outputs
 (heading, altitude, speed) with safety envelope enforcement.
 """
-from dataclasses import dataclass, field
-from typing import Optional
-import math
 
+import math
+from dataclasses import dataclass
+from typing import Optional
+
+from src.dfb.safety_envelope import (
+    DEFAULT_SAFETY_CONFIG,
+    SafetyConfig,
+    SafetyStatus,
+    check_safety,
+)
 from src.dfb.state_estimator import EstimatedState, bearing_to
-from src.dfb.safety_envelope import SafetyConfig, SafetyStatus, check_safety, DEFAULT_SAFETY_CONFIG
 
 
 @dataclass
 class MissionGoal:
     """Mission goal for advisory computation."""
-    target_lat: Optional[float] = None      # Target latitude (degrees)
-    target_lon: Optional[float] = None      # Target longitude (degrees)
-    target_alt: float = 50.0                # Target altitude AGL (meters)
-    target_speed: float = 10.0              # Target ground speed (m/s)
-    loiter_radius: float = 50.0             # Loiter radius (meters)
+
+    target_lat: Optional[float] = None  # Target latitude (degrees)
+    target_lon: Optional[float] = None  # Target longitude (degrees)
+    target_alt: float = 50.0  # Target altitude AGL (meters)
+    target_speed: float = 10.0  # Target ground speed (m/s)
+    loiter_radius: float = 50.0  # Loiter radius (meters)
 
 
 @dataclass
@@ -27,11 +34,12 @@ class Advisory:
 
     FC remains authority - this is advisory only.
     """
-    heading_deg: float          # 0-360, true north
-    altitude_m: float           # Target altitude AGL (meters)
-    speed_mps: float            # Target ground speed (m/s)
-    mode: str                   # Suggested FC mode: GUIDED, LOITER, RTL, etc.
-    reason: str                 # Human-readable explanation
+
+    heading_deg: float  # 0-360, true north
+    altitude_m: float  # Target altitude AGL (meters)
+    speed_mps: float  # Target ground speed (m/s)
+    mode: str  # Suggested FC mode: GUIDED, LOITER, RTL, etc.
+    reason: str  # Human-readable explanation
 
     # Metadata
     safety: Optional[SafetyStatus] = None
@@ -41,16 +49,34 @@ class Advisory:
 
 # Modes where advisory is appropriate
 ADVISORY_COMPATIBLE_MODES = {
-    "GUIDED", "AUTO", "LOITER", "POSHOLD", "ALT_HOLD", "AUTO_MISSION",
+    "GUIDED",
+    "AUTO",
+    "LOITER",
+    "POSHOLD",
+    "ALT_HOLD",
+    "AUTO_MISSION",
 }
 
 # Modes where advisory should NOT be given (pilot in control)
 MANUAL_MODES = {
-    "MANUAL", "ACRO", "SPORT", "STABILIZE", "RATTITUDE", "THROW", "DRIFT",
+    "MANUAL",
+    "ACRO",
+    "SPORT",
+    "STABILIZE",
+    "RATTITUDE",
+    "THROW",
+    "DRIFT",
 }
 
 # Modes that are emergency/automatic
-AUTO_SAFETY_MODES = {"RTL", "LAND", "SMART_RTL", "AUTO_LAND", "AUTO_RTL", "AUTO_PRECLAND"}
+AUTO_SAFETY_MODES = {
+    "RTL",
+    "LAND",
+    "SMART_RTL",
+    "AUTO_LAND",
+    "AUTO_RTL",
+    "AUTO_PRECLAND",
+}
 
 
 def _mode_allows_advisory(mode: str) -> bool:
@@ -176,7 +202,9 @@ class Advisor:
             return (
                 math.degrees(state.yaw) % 360.0,
                 max(state.up, self.safety_config.min_alt),
-                min(self.default_goal.target_speed, self.safety_config.max_ground_speed),
+                min(
+                    self.default_goal.target_speed, self.safety_config.max_ground_speed
+                ),
                 "No target set - maintaining current heading",
             )
 
@@ -191,15 +219,20 @@ class Advisor:
 
         # Compute bearing to target
         bearing = bearing_to(
-            goal.target_lat, goal.target_lon,
-            state._raw.lat, state._raw.lon,
+            goal.target_lat,
+            goal.target_lon,
+            state._raw.lat,
+            state._raw.lon,
         )
 
         # Compute distance
         from src.dfb.state_estimator import distance_to
+
         dist = distance_to(
-            goal.target_lat, goal.target_lon,
-            state._raw.lat, state._raw.lon,
+            goal.target_lat,
+            goal.target_lon,
+            state._raw.lat,
+            state._raw.lon,
         )
 
         # If close to target, loiter
@@ -213,7 +246,9 @@ class Advisor:
 
         # Normal navigation
         # Clamp altitude to safety limits
-        alt = max(self.safety_config.min_alt, min(goal.target_alt, self.safety_config.max_alt))
+        alt = max(
+            self.safety_config.min_alt, min(goal.target_alt, self.safety_config.max_alt)
+        )
 
         # Clamp speed
         speed = min(goal.target_speed, self.safety_config.max_ground_speed)
@@ -229,8 +264,10 @@ class Advisor:
         """Compute heading for RTL (return to home)."""
         if self._home_position and state._raw:
             return bearing_to(
-                self._home_position[0], self._home_position[1],
-                state._raw.lat, state._raw.lon,
+                self._home_position[0],
+                self._home_position[1],
+                state._raw.lat,
+                state._raw.lon,
             )
         # Default: current heading
         return math.degrees(state.yaw) % 360.0

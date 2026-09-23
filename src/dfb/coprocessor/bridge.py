@@ -25,7 +25,7 @@ class CoprocessorBridge:
     def process(
         self, user_message: str, explicit_feedback: Optional[str] = None
     ) -> OllamaPayload:
-        potential = self.circuit.update(user_message, explicit_feedback)
+        self.circuit.update(user_message, explicit_feedback)
         escape = self.circuit.should_escape()
 
         if escape:
@@ -34,9 +34,10 @@ class CoprocessorBridge:
                 temperature=0.1,
                 num_predict=80,
                 system_addendum=(
-                    "[ESTADO INTERNO: CIRCUITO DE FUGA DISPARADO - O utilizador está num loop de "
-                    "frustração/insistência. Aborta explicações longas. Apresenta apenas a solução "
-                    "direta em 1-2 tópicos ou pergunta sucintamente se prefere tentar outra abordagem.]"
+                    "[ESTADO INTERNO: CIRCUITO DE FUGA DISPARADO - O utilizador "
+                    "está num loop de frustração/insistência. Aborta explicações "
+                    "longas. Apresenta apenas a solução direta em 1-2 tópicos ou "
+                    "pergunta sucintamente se prefere tentar outra abordagem.]"
                 ),
             )
         else:

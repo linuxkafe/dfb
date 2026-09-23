@@ -7,15 +7,13 @@ Since the flight controller runs its own EKF, this module mainly:
 - Computes derived quantities (ground speed, climb rate)
 - Detects anomalies (GPS glitches, IMU divergence)
 """
+
 import math
-import time
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional
 
-import numpy as np
-
-from src.dfb.mavlink_ingest import TelemetryState
 from src.dfb.crsf_ingest import CRSFTelemetry
+from src.dfb.mavlink_ingest import TelemetryState
 
 
 @dataclass
@@ -25,6 +23,7 @@ class EstimatedState:
     ENU = East-North-Up (local tangent plane)
     NED = North-East-Down (aerospace standard, used by MAVLink)
     """
+
     # Position (ENU, meters relative to home)
     east: float = 0.0
     north: float = 0.0
@@ -44,12 +43,12 @@ class EstimatedState:
     yaw: float = 0.0
 
     # Metadata
-    timestamp: float = 0.0          # Unix time of last update
-    valid: bool = False             # True if all required data present
-    gps_fix_type: int = 0           # 0=none, 1=no fix, 2=2D, 3=3D, 4=DGPS, 5=RTK
+    timestamp: float = 0.0  # Unix time of last update
+    valid: bool = False  # True if all required data present
+    gps_fix_type: int = 0  # 0=none, 1=no fix, 2=2D, 3=3D, 4=DGPS, 5=RTK
     satellites_visible: int = 0
-    hdop: float = 99.0              # Horizontal dilution of precision
-    vdop: float = 99.0              # Vertical dilution of precision
+    hdop: float = 99.0  # Horizontal dilution of precision
+    vdop: float = 99.0  # Vertical dilution of precision
 
     # Flight mode from HEARTBEAT
     flight_mode: str = "UNKNOWN"
@@ -114,7 +113,7 @@ def _map_flight_mode(base_mode: int, custom_mode: int, autopilot: int = 3) -> st
     autopilot: 3 = ArduPilot, 6 = PX4 (MAV_AUTOPILOT enum)
     """
     # Check if armed
-    armed = bool(base_mode & 0x80)  # MAV_MODE_FLAG_SAFETY_ARMED
+    # (armed status intentionally not reflected in mode string)
 
     if autopilot == 3:  # ArduPilot
         mode = ARDUPILOT_MODE_MAP.get(custom_mode, f"AP_MODE_{custom_mode}")
@@ -143,12 +142,15 @@ def _wrap_angle(angle: float) -> float:
     return (angle + math.pi) % (2 * math.pi) - math.pi
 
 
-def estimate_state(telemetry: TelemetryState, home_position: Optional[tuple[float, float]] = None) -> EstimatedState:
+def estimate_state(
+    telemetry: TelemetryState, home_position: Optional[tuple[float, float]] = None
+) -> EstimatedState:
     """Convert TelemetryState (NED) to EstimatedState (ENU) with validation.
 
     Args:
         telemetry: Raw telemetry from MAVLink ingestion
-        home_position: (lat, lon) of home position in degrees. If None, uses first GPS fix.
+        home_position: (lat, lon) of home position in degrees.
+            If None, uses first GPS fix.
 
     Returns:
         EstimatedState with validated, transformed data
@@ -169,7 +171,6 @@ def estimate_state(telemetry: TelemetryState, home_position: Optional[tuple[floa
         home_lat, home_lon = home_position
 
     # Earth radius at latitude
-    R = 6371000.0  # meters
     lat_rad = math.radians(home_lat)
 
     # Delta in degrees
@@ -183,8 +184,8 @@ def estimate_state(telemetry: TelemetryState, home_position: Optional[tuple[floa
 
     # Velocity: NED to ENU
     # MAVLink vx/vy/vz are in NED frame (cm/s): vx=North, vy=East, vz=Down
-    vn = telemetry.vx / 100.0   # North = vx
-    ve = telemetry.vy / 100.0   # East = vy
+    vn = telemetry.vx / 100.0  # North = vx
+    ve = telemetry.vy / 100.0  # East = vy
     vu = -telemetry.vz / 100.0  # Up = -Down
 
     # Attitude: MAVLink ATTITUDE is in NED frame (body->NED)
@@ -293,20 +294,26 @@ def compute_climb_rate(state: EstimatedState) -> float:
     return state.vu
 
 
-def bearing_to(target_lat: float, target_lon: float, current_lat: float, current_lon: float) -> float:
+def bearing_to(
+    target_lat: float, target_lon: float, current_lat: float, current_lon: float
+) -> float:
     """Compute bearing from current to target (degrees, 0-360, true north)."""
     lat1 = math.radians(current_lat)
     lat2 = math.radians(target_lat)
     dlon = math.radians(target_lon - current_lon)
 
     y = math.sin(dlon) * math.cos(lat2)
-    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(
+        dlon
+    )
 
     bearing = math.degrees(math.atan2(y, x))
     return (bearing + 360.0) % 360.0
 
 
-def distance_to(target_lat: float, target_lon: float, current_lat: float, current_lon: float) -> float:
+def distance_to(
+    target_lat: float, target_lon: float, current_lat: float, current_lon: float
+) -> float:
     """Compute great-circle distance (meters)."""
     R = 6371000.0
     lat1 = math.radians(current_lat)
@@ -314,6 +321,9 @@ def distance_to(target_lat: float, target_lon: float, current_lat: float, curren
     dlat = math.radians(target_lat - current_lat)
     dlon = math.radians(target_lon - current_lon)
 
-    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c

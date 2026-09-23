@@ -1,4 +1,5 @@
 """Unit tests for CRSF/ELRS telemetry ingestion."""
+
 import asyncio
 import struct
 from unittest.mock import AsyncMock, patch
@@ -103,11 +104,30 @@ class TestDecodeRCChannels:
         """Test decoding center position (1500us)."""
         # 1500 = 0x05DC in 11 bits
         # Pack 16 channels of 1500 in 11-bit little-endian format
-        payload = bytes([
-            0xDC, 0xE5, 0x2E, 0x77, 0xB9, 0xCB, 0x5D, 0xEE,
-            0x72, 0x97, 0xBB, 0xDC, 0xE5, 0x2E, 0x77, 0xB9,
-            0xCB, 0x5D, 0xEE, 0x72
-        ])
+        payload = bytes(
+            [
+                0xDC,
+                0xE5,
+                0x2E,
+                0x77,
+                0xB9,
+                0xCB,
+                0x5D,
+                0xEE,
+                0x72,
+                0x97,
+                0xBB,
+                0xDC,
+                0xE5,
+                0x2E,
+                0x77,
+                0xB9,
+                0xCB,
+                0x5D,
+                0xEE,
+                0x72,
+            ]
+        )
         channels = decode_rc_channels(payload)
         assert len(channels) == 16
         # All channels should be 0.0 (center)
@@ -116,6 +136,7 @@ class TestDecodeRCChannels:
 
     def test_decode_min_max(self):
         """Test decoding min/max positions."""
+
         # 988 = min, 2012 = max
         # Pack 16 channels of 988 and 2012 in 11-bit little-endian
         def encode_rc_channels(channels):
@@ -144,6 +165,7 @@ class TestDecodeRCChannels:
 
     def test_decode_mixed(self):
         """Test decoding mixed channel values."""
+
         # Channel 0 = 1000, Channel 1 = 1500, Channel 2 = 2000
         # 1000 = 0x03E8, 1500 = 0x05DC, 2000 = 0x07D0
         def encode_rc_channels(channels):
@@ -206,6 +228,7 @@ class TestCRSFModuleAPI:
     def test_get_crsf_state_no_reader(self):
         """get_crsf_state returns default state when no reader."""
         import src.dfb.crsf_ingest as crsf_ingest
+
         original = crsf_ingest._reader
         crsf_ingest._reader = None
         try:
@@ -223,20 +246,24 @@ class TestAutodetection:
     def test_detect_mavlink_v1(self):
         """Detect MAVLink v1 (0xFE)."""
         from src.dfb.mavlink_ingest import detect_protocol
+
         assert detect_protocol(bytes([0xFE, 0x09, 0x00])) == "mavlink"
 
     def test_detect_mavlink_v2(self):
         """Detect MAVLink v2 (0xFD)."""
         from src.dfb.mavlink_ingest import detect_protocol
+
         assert detect_protocol(bytes([0xFD, 0x00, 0x00])) == "mavlink"
 
     def test_detect_crsf(self):
         """Detect CRSF (0xC8)."""
         from src.dfb.mavlink_ingest import detect_protocol
+
         assert detect_protocol(bytes([0xC8, 0x16, 0x10])) == "crsf"
 
     def test_detect_unknown(self):
         """Detect unknown protocol."""
         from src.dfb.mavlink_ingest import detect_protocol
+
         assert detect_protocol(b"\x00\x01") == "unknown"
         assert detect_protocol(b"") == "unknown"

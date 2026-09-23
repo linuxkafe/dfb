@@ -1,4 +1,5 @@
 """Maze simulation for Fly Brain benchmarking."""
+
 import random
 import time
 from dataclasses import dataclass

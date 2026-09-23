@@ -1,22 +1,20 @@
 """gRPC service implementation for FlyBrain."""
+
 import asyncio
-import time
 import uuid
 from typing import Optional
 
-import grpc
-
 from src.dfb import __version__
-from src.dfb.cpu_engine import get_cpu_engine, shutdown_cpu_engine
+from src.dfb.advisor import MissionGoal, get_advisor
+from src.dfb.cpu_engine import get_cpu_engine
 from src.dfb.crsf_ingest import get_crsf_state
-from src.dfb.mavlink_ingest import get_telemetry_state
-from src.dfb.advisor import Advisor, Advisory, MissionGoal, get_advisor
-from src.dfb.health import get_overall_health
-from src.dfb.safety_envelope import check_safety
-from src.dfb.state_estimator import estimate_state, estimate_state_fused
 
 # Import generated gRPC code
 from src.dfb.grpc import flybrain_pb2, flybrain_pb2_grpc
+from src.dfb.health import get_overall_health
+from src.dfb.mavlink_ingest import get_telemetry_state
+from src.dfb.safety_envelope import check_safety
+from src.dfb.state_estimator import estimate_state
 
 
 class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
@@ -36,7 +34,9 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
             self._advisor = get_advisor()
         return self._advisor
 
-    def _build_mavlink_telemetry(self, telemetry) -> Optional["flybrain_pb2.TelemetryMavlink"]:
+    def _build_mavlink_telemetry(
+        self, telemetry
+    ) -> Optional["flybrain_pb2.TelemetryMavlink"]:
         """Convert MAVLink telemetry to protobuf."""
         if telemetry.timestamp == 0.0:
             return None
@@ -71,7 +71,9 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
             armed=telemetry.armed,
         )
 
-    def _build_crsf_telemetry(self, telemetry) -> Optional["flybrain_pb2.TelemetryCrsf"]:
+    def _build_crsf_telemetry(
+        self, telemetry
+    ) -> Optional["flybrain_pb2.TelemetryCrsf"]:
         """Convert CRSF telemetry to protobuf."""
         if telemetry.timestamp == 0.0:
             return None
@@ -101,7 +103,9 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
             message_counts=telemetry.msg_counts,
         )
 
-    def _build_fused_telemetry(self, crsf_telemetry) -> Optional["flybrain_pb2.TelemetryFused"]:
+    def _build_fused_telemetry(
+        self, crsf_telemetry
+    ) -> Optional["flybrain_pb2.TelemetryFused"]:
         """Build fused telemetry from CRSF."""
         if crsf_telemetry.timestamp == 0.0:
             return None
@@ -123,12 +127,16 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
             return "mavlink"  # Default to MAVLink when both available
         return "none"
 
-    def _build_telemetry_response(self, mavlink_telemetry, crsf_telemetry) -> "flybrain_pb2.TelemetryResponse":
+    def _build_telemetry_response(
+        self, mavlink_telemetry, crsf_telemetry
+    ) -> "flybrain_pb2.TelemetryResponse":
         """Build complete telemetry response."""
         primary = self._determine_primary_source(mavlink_telemetry, crsf_telemetry)
 
         return flybrain_pb2.TelemetryResponse(
-            timestamp=mavlink_telemetry.timestamp if mavlink_telemetry.timestamp > 0 else crsf_telemetry.timestamp,
+            timestamp=mavlink_telemetry.timestamp
+            if mavlink_telemetry.timestamp > 0
+            else crsf_telemetry.timestamp,
             link_ok=mavlink_telemetry.link_ok or crsf_telemetry.link_ok,
             source=primary,
             mavlink=self._build_mavlink_telemetry(mavlink_telemetry),
@@ -155,7 +163,8 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
                 severity=v.severity,
                 value=v.value,
                 limit=v.limit,
-            ) for v in safety.violations
+            )
+            for v in safety.violations
         ]
         warnings = [
             flybrain_pb2.SafetyViolation(
@@ -164,7 +173,8 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
                 severity=v.severity,
                 value=v.value,
                 limit=v.limit,
-            ) for v in safety.warnings
+            )
+            for v in safety.warnings
         ]
         return flybrain_pb2.SafetyStatus(
             safe=safety.safe,
@@ -213,21 +223,6 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
 
     def _compute_advisory(self, state, request) -> "flybrain_pb2.Advisory":
         """Compute advisory from state and request."""
-        goal = flybrain_pb2.MissionGoal(
-            target_lat=request.target_lat,
-            target_lon=request.target_lon,
-            target_alt=request.target_alt if request.target_alt > 0 else 50.0,
-            target_speed=request.target_speed if request.target_speed > 0 else 10.0,
-        )
-
-        # Build mission goal for advisor
-        goal = flybrain_pb2.MissionGoal(
-            target_lat=request.target_lat,
-            target_lon=request.target_lon,
-            target_alt=request.target_alt if request.target_alt > 0 else 50.0,
-            target_speed=request.target_speed if request.target_speed > 0 else 10.0,
-        )
-
         # Create MissionGoal for advisor (Python class)
         mission_goal = MissionGoal(
             target_lat=request.target_lat if request.target_lat != 0 else None,
@@ -253,8 +248,6 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
         )
 
     async def Decide(self, request, context):
-        start_time = time.time()
-
         # Get telemetry from both sources
         mavlink_telemetry = get_telemetry_state()
         crsf_telemetry = get_crsf_state()
@@ -305,7 +298,8 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
                     severity=v.severity,
                     value=v.value,
                     limit=v.limit,
-                ) for v in safety.violations
+                )
+                for v in safety.violations
             ],
             warnings=[
                 flybrain_pb2.SafetyViolation(
@@ -314,7 +308,8 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
                     severity=v.severity,
                     value=v.value,
                     limit=v.limit,
-                ) for v in safety.warnings
+                )
+                for v in safety.warnings
             ],
             battery_pct=safety.battery_pct,
             link_ok=safety.link_ok,
@@ -328,12 +323,6 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
         )
 
         # Record metrics (reuse existing metrics from service module)
-        from src.dfb.metrics import record_decision, record_safety_violation
-        duration = time.time() - start_time
-        mode = "telemetry" if request.use_telemetry else "maze"
-        action = advisory.mode
-        # Record decision metrics would need access to metrics module
-
         return flybrain_pb2.DecideResponse(
             advisory=advisory_pb,
             safety=safety_pb,
@@ -351,6 +340,5 @@ class FlyBrainServicer(flybrain_pb2_grpc.FlyBrainServiceServicer):
     async def SendCommand(self, request, context):
         # Safety-critical command - would need token validation
         return flybrain_pb2.CommandResponse(
-            success=True,
-            message=f"Command '{request.action}' acknowledged (simulated)"
+            success=True, message=f"Command '{request.action}' acknowledged (simulated)"
         )

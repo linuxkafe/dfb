@@ -1,4 +1,5 @@
 """Tests for HttpDeckClient (HTTP)."""
+
 from unittest.mock import Mock
 
 import pytest
@@ -38,7 +39,9 @@ def test_decide(mock_session):
 
     client = HttpDeckClient(session=Mock())
     client.session = mock_session
-    resp = client.decide(position=[0, 0], grid=[[0]*10 for _ in range(10)], exit=[9, 9])
+    resp = client.decide(
+        position=[0, 0], grid=[[0] * 10 for _ in range(10)], exit=[9, 9]
+    )
     assert resp.action == "UP"
     assert resp.confidence == 0.9
     assert resp.logits == [0.1, 0.2, 0.3, 0.4]
@@ -77,4 +80,3 @@ def test_create_client_from_env(monkeypatch):
     monkeypatch.setenv("DFB_PORT", "9090")
     client = create_client_from_env()
     assert client.base_url == "http://myhost:9090"
-
