@@ -246,9 +246,9 @@ class TestServiceExtended:
                 response = client.get("/health", headers={"X-Correlation-ID": "test-123"})
                 assert response.status_code == 200
                 mock_log.assert_called()
-                # correlation_id is set via context variable, not passed in kwargs
-                call_kwargs = mock_log.call_args.kwargs
-                assert "correlation_id" in call_kwargs or True  # correlation_id set via context var
+                # log_request is called positionally:
+                # log_request(path, method, status, duration_ms, correlation_id)
+                assert mock_log.call_args.args[4] == "test-123"
 
     def test_watchdog_logic_mavlink(self):
         """Test watchdog MAVLink logic."""
