@@ -58,6 +58,9 @@ dfb = "dfb.cli:app"
 testpaths = ["tests", "sim"]
 addopts = "--cov=src --cov-report=xml --cov-report=term"
 pythonpath = ["src"]
+markers = [
+    "integration: requires a live subprocess or external dependency",
+]
 
 [tool.ruff]
 line-length = 88

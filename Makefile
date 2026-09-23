@@ -1,4 +1,4 @@
-.PHONY: setup run test lint format build check doctor help deploy-deck test-deck sim-export sim-loop sim-benchmark zink-test install-cli
+.PHONY: setup run test lint format build check doctor help deploy-deck test-deck test-deploy sim-export sim-loop sim-benchmark zink-test install-cli
 
 AES_LANGUAGE ?= python
 AES_LINT ?= ruff check
@@ -58,10 +58,17 @@ doctor:
 	@echo "Python: $$(python --version 2>&1 || echo not-found)"
 
 help:
-	@echo "AES Commands: make setup run test lint format build check doctor deploy-deck test-deck sim-export sim-loop sim-benchmark zink-test install-cli"
+	@echo "AES Commands: make setup run test lint format build check doctor deploy-deck test-deck test-deploy sim-export sim-loop sim-benchmark zink-test install-cli"
 
 deploy-deck:
 	@./scripts/deploy_deck.sh
+
+# Offline deployment integration tests (no Deck hardware required).
+# Validates systemd unit, port/env consistency, deploy script integrity,
+# and smoke-boots the app with the exact systemd uvicorn command.
+test-deploy:
+	@echo "🧪 Running deployment integration tests (offline)..."
+	@$(AES_TEST) tests/deploy/ -v
 
 # Integration test against Steam Deck (direct LAN access, no SSH tunnel)
 # SSH used only for deploying monitor script and collecting CSV

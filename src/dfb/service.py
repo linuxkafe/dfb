@@ -71,7 +71,6 @@ class UnifiedTelemetryState:
 async def lifespan(app: FastAPI):
     # Startup
     setup_logging("INFO")
-    app.add_middleware(CorrelationIdMiddleware)
 
     get_cpu_engine()
 

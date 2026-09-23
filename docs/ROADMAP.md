@@ -25,16 +25,24 @@
 
 ## Sprint 02 — Documentation & Coverage
 **Period:** 2026-09-29 → 2026-10-06
-**Status:** 🔄 Active
+**Status:** ✅ Complete
 **Goal:** Complete documentation, reach 80% coverage, prepare for Deck integration
 
-### Active Tickets
+### Completed Tickets
 | ID | Title | Impact | Effort | Status |
 |----|-------|--------|--------|--------|
-| T005 | Update ROADMAP.md with real milestones | MEDIUM | LOW | 🔄 |
-| T006 | Expand DESIGN.md per AES FR-D5 | LOW | MEDIUM | ⏳ |
-| T008 | Push test coverage to 80% | HIGH | HIGH | ⏳ |
-| T009 | Add integration test for Deck deployment | MEDIUM | HIGH | ⏳ |
+| T005 | Update ROADMAP.md with real milestones | MEDIUM | LOW | ✅ |
+| T006 | Expand DESIGN.md per AES FR-D5 | LOW | MEDIUM | ✅ |
+| T008 | Push test coverage to 80% | HIGH | HIGH | ✅ |
+| T009 | Add integration test for Deck deployment | MEDIUM | HIGH | ✅ |
+
+### Key Achievements
+- Test coverage 80.14% (208 tests pass)
+- `make test-deploy`: offline deployment integration suite (24 tests) —
+  systemd unit, port/env consistency, deploy script, real uvicorn smoke boot
+- Two real production bugs fixed by smoke boot: duplicate middleware
+  registration in lifespan; non-finite float (`inf` link age) → HTTP 500
+- Deck integration prepared for hardware validation (Sprint 03)
 
 ### Target Metrics
 - Test coverage: ≥80% (currently 70%)
@@ -117,4 +125,4 @@
 
 ---
 
-*Last updated: 2026-09-22 | Sprint 02 active*
+*Last updated: 2026-09-23 | Sprint 02 complete | Sprint 03 (Deck integration) next*

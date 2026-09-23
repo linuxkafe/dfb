@@ -1,4 +1,5 @@
 """Component health checking for Deck Fly Brain."""
+import math
 import time
 from dataclasses import dataclass
 from typing import Literal, Optional
@@ -130,6 +131,23 @@ def check_decision_engine() -> ComponentHealth:
         )
 
 
+def _json_safe(value):
+    """Convert non-JSON-serialisable values (inf/nan) to None.
+
+    A real ASGI server (uvicorn) fails to serialise non-finite floats in
+    response JSON with HTTP 500. Telemetry timestamps default to 0 before the
+    first message, producing float('inf') link ages — sanitise at the API
+    boundary while keeping internal semantics unchanged.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
 def get_overall_health() -> tuple[Literal["ok", "degraded", "unhealthy"], dict]:
     """Get overall system health and component details."""
     cpu = check_cpu_engine()
@@ -138,10 +156,10 @@ def get_overall_health() -> tuple[Literal["ok", "degraded", "unhealthy"], dict]:
     decision = check_decision_engine()
     
     components = {
-        "cpu_engine": {"status": cpu.status, "details": cpu.details},
-        "mavlink_link": {"status": mavlink.status, "details": mavlink.details},
-        "crsf_link": {"status": crsf.status, "details": crsf.details},
-        "decision_engine": {"status": decision.status, "details": decision.details},
+        "cpu_engine": {"status": cpu.status, "details": _json_safe(cpu.details)},
+        "mavlink_link": {"status": mavlink.status, "details": _json_safe(mavlink.details)},
+        "crsf_link": {"status": crsf.status, "details": _json_safe(crsf.details)},
+        "decision_engine": {"status": decision.status, "details": _json_safe(decision.details)},
     }
     
     # Determine overall status
