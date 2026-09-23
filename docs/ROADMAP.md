@@ -54,7 +54,7 @@
 
 ## Sprint 03 — Deck Integration & Production Hardening
 **Period:** 2026-10-06 → 2026-10-20
-**Status:** 📅 Planned
+**Status:** 🚧 In progress
 **Goal:** Validate on Steam Deck hardware, production readiness
 
 ### Planned Tickets
@@ -64,7 +64,7 @@
 | T011 | MAVLink/CRSF hardware test | BLOCKER | HIGH | 📅 |
 | T012 | Performance benchmark (latency, throughput) | HIGH | MEDIUM | 📅 |
 | T013 | Thermal/vibration stress test | HIGH | MEDIUM | 📅 |
-| T014 | Production deployment guide | MEDIUM | LOW | 📅 |
+| T014 | Production deployment guide | MEDIUM | LOW | ✅ |
 
 ### Success Criteria
 - Service runs on Steam Deck with MAVLink + CRSF

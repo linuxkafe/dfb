@@ -127,10 +127,31 @@ class TestSystemdUnit:
         assert "CPUQuota" in pairs, "CPUQuota limit missing"
 
     def test_sleep_inhibit_guard_present(self):
-        """Safety-relevant: service must prevent Deck from sleeping mid-flight."""
+        """Safety-relevant: service must prevent Deck from sleeping mid-flight.
+
+        The inhibitor must WRAP the ExecStart command (lock held for the
+        service's lifetime). A bare `systemd-inhibit` without a command
+        (e.g. as ExecStartPre) spawns an interactive shell and never provides
+        the guarantee — assert the semantics, not just the string.
+        """
+        pairs = _read_unit()
+        exec_start = pairs.get("ExecStart", "")
+        assert "systemd-inhibit" in exec_start, (
+            "ExecStart must run uvicorn under systemd-inhibit"
+        )
+        assert "--what=sleep:handle-lid-switch" in exec_start, (
+            "inhibitor must block sleep and lid close"
+        )
+        assert "--mode=block" in exec_start, "inhibitor must block, not delay"
+        assert "--" in exec_start, "inhibitor must wrap a COMMAND via '--'"
+        assert "uvicorn" in exec_start, (
+            f"uvicorn must be the inhibited command, got: {exec_start}"
+        )
         lines = SYSTEMD_UNIT.read_text()
-        assert "systemd-inhibit" in lines, "sleep-inhibit ExecStartPre missing"
-        assert "--what=handle-lid-switch:sleep" in lines
+        assert "ExecStartPre" not in lines, (
+            "inhibitor must live in ExecStart, not ExecStartPre "
+            "(a no-command ExecStartPre never holds the lock for the service)"
+        )
 
     def test_restart_policy(self):
         pairs = _read_unit()

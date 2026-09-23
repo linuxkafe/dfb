@@ -16,7 +16,11 @@ Environment=MAVLINK_TARGET_COMPONENT=1
 Environment=CRSF_DEVICE=/dev/ttyACM1
 Environment=CRSF_BAUD=420000
 WorkingDirectory=/home/deck/.local/share/dfb
-ExecStart=/home/deck/.local/share/dfb/.venv/bin/uvicorn dfb.service:app --host 0.0.0.0 --port 8082
+
+# Run uvicorn under the sleep inhibitor: the lock is held for the lifetime
+# of the service process, not a one-shot pre-start hook. Blocks Deck sleep
+# and lid-close while the flight service is up.
+ExecStart=/usr/bin/systemd-inhibit --what=sleep:handle-lid-switch --who="Fly Brain" --mode=block --why="Flight service must stay awake" -- /home/deck/.local/share/dfb/.venv/bin/uvicorn dfb.service:app --host 0.0.0.0 --port 8082
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
@@ -27,9 +31,6 @@ SyslogIdentifier=flybrain
 MemoryMax=2G
 CPUQuota=200%
 MemoryHigh=1.5G
-
-# Prevent Deck sleep while service runs
-ExecStartPre=/usr/bin/systemd-inhibit --what=handle-lid-switch:sleep --who="Fly Brain" --mode=block --why="Flight service must stay awake"
 
 [Install]
 WantedBy=default.target
