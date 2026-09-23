@@ -28,7 +28,7 @@ format:
 build:
 	@$(AES_BUILD)
 
-check: docs-check code-check test-check lint-check safety-check
+check: docs-check code-check test-check lint-check tautology-check safety-check
 
 docs-check:
 	@test -f docs/VISION.md && grep -q "Problem" docs/VISION.md
@@ -45,6 +45,9 @@ test-check:
 
 lint-check:
 	@$(AES_LINT) src tests
+
+tautology-check:
+	@python3 scripts/check_tautologies.py
 
 safety-check:
 	@echo "🔍 Running safety checks..."
