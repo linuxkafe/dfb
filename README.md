@@ -1,98 +1,137 @@
-# dfb — Deck FlyBrain 
+# dfb — Deck FlyBrain
 
-A compute framework for the **FlyBrain** autonomous flight decision system, running on Steam Deck (x86_64 Linux, AMD APU) with Vulkan acceleration.
-
-## Overview
-
-This project provides a Vulkan compute engine and a neural co-processor prototype for the FlyBrain, running on Steam Deck hardware, accessible remotely via SSH.
+Autonomous flight **decision service** for FPV drones, running as a service on
+**Steam Deck** hardware (x86_64 Linux, AMD APU), accessed remotely via SSH /
+LAN. Flight-controller integration is via **MAVLink/CRSF only** — no FC
+firmware is ever touched.
 
 ## Architecture
 
-- **Client** (development machine): requests, UI, orchestration
-- **Server** (Steam Deck via SSH): Vulkan compute service, FlyBrain neural inference
+```
+Client (dev machine)  ── HTTP :8082 / gRPC :8083 ──▶  Steam Deck (server)
+                                                         │  compute
+                                                         ▼
+                          MAVLink ─ /dev/ttyACM0 ──┬──▶ ingest ──▶ state estimator
+                          CRSF    ─ /dev/ttyACM1 ──┘         (NED→ENU, fusion)
+                                                        │
+                                                        ▼
+                                        advisor ──▶ safety envelope ──▶ advisory
+```
+
+- **Server (Steam Deck):** telemetry ingestion (MAVLink + CRSF), state
+  estimation, safety envelope, and the decision (advisory) engine. Runs as a
+  systemd user service (`flybrain`) — HTTP (uvicorn, `8082`) + gRPC (`8083`).
+- **Client (development machine):** requests, UI, orchestration — over an SSH
+  tunnel or direct LAN.
+
+## Components
+
+| Area | Source | Role |
+|------|--------|------|
+| HTTP API | `src/dfb/service.py` | `/health`, `/version`, `/telemetry`, `/decide`, `/metrics`, `/confirm/issue`, `/command`, `/confirm/verify` |
+| gRPC API | `src/dfb/grpc_server.py`, `grpc_service.py` | Same surface over protobuf, `8083` |
+| MAVLink ingest | `src/dfb/mavlink_ingest.py` | Telemetry from flight controller (`/dev/ttyACM0`) |
+| CRSF/ELRS ingest | `src/dfb/crsf_ingest.py` | Telemetry from radio link (`/dev/ttyACM1`) |
+| State estimation | `src/dfb/state_estimator.py` | Consistency checks, NED→ENU, anomaly detection |
+| Safety envelope | `src/dfb/safety_envelope.py` | Geofence/altitude/battery/link/GPS/speed limits |
+| Advisor | `src/dfb/advisor.py` | Mission-goal advisory + safety gating |
+| Compute engines | `src/dfb/cpu_engine.py`, `vulkan_engine.py` | Inference backends; Vulkan optional, CPU fallback |
+| Metrics | `src/dfb/metrics.py` | Prometheus exposition at `/metrics` |
+| JSON boundary | `src/dfb/serialization.py` | Sanitizes non-finite floats → `null` (no HTTP 500) |
+| CLI | `src/dfb/cli.py` | `dfb` — health, version, decide, decide-telemetry, telemetry, issue/verify-token, command |
+
+Decision is **advisory only**: the service recommends; a human (or the pilot)
+issues safety-critical commands, which require a short-lived confirmation
+token on `/command`. The system never sends conflicting safety-critical
+commands without explicit confirmation.
 
 ## Quick Start
 
 ```bash
-make setup      # install dependencies
-make check      # run quality gates (lint, test, safety)
-make deploy-deck  # deploy service to Steam Deck
+make setup                 # install dependencies
+make run                   # start the HTTP service (uvicorn :8082)
+make check                 # run quality gates (docs, tests, lint, tautology, safety)
+make deploy-deck           # deploy to Steam Deck (systemd user service)
+make test-deck             # LAN integration + resource monitor on Deck
+make test-deploy           # offline deployment tests (systemd unit, smoke boot)
+```
+
+Requires Python ≥ 3.11. Extras: `pip install -e .[cli,sim,grpc]`.
+
+### CLI (dev machine)
+
+```bash
+dfb health --host steamdeck
+dfb decide '{"position":[1,1],"grid":[[...]],"exit":[9,9]}'
+dfb decide-telemetry --lat 47.001 --lon 8.001 --alt 50 --speed 10
+dfb telemetry
+dfb issue-token && dfb command ARM arming --token <TOKEN>
 ```
 
 ## Vulkan Compute Engine
 
-Located in `src/dfb/vulkan_engine.py` — a ctypes-based Vulkan 1.3 wrapper with:
-- Two-pass compute pipeline (hidden + output shaders)
-- Per-submission fencing for correct pass ordering
-- Verified on Steam Deck RADV (VANGOGH, API 1.4.330)
+`src/dfb/vulkan_engine.py` — a ctypes-based Vulkan 1.3 wrapper (optional):
+two-pass compute pipeline with per-submission fencing. **Graceful
+degradation**: if Vulkan is unavailable, inference falls back to the CPU
+engine — the service runs on any Deck regardless of driver state.
 
-## Neural Co-Processor (sim/)
+## Neural Co-Processor Prototype (sim/)
 
-A CPU-only neural co-processor prototype (`sim/`):
+A CPU-only research prototype (`sim/`):
 
-- `fly_coprocessor.py` — E-PG ring attractor, mushroom body with DAN plasticity, octopamine habituation
+- `fly_coprocessor.py` — E-PG ring attractor, mushroom body with DAN
+  plasticity, octopamine habituation
 - `semantic_encoder.py` — text → topic angle with pre-synaptic habituation
-- `neuro_to_ollama.py` — connectome state → Ollama parameters (temperature, num_predict, context-switch notes)
-- `chat_cli.py` — interactive CLI with `++`/`--` feedback, telemetry line
-- `test_coprocessor.py` — 13 offline validation cases
+- `neuro_to_ollama.py` — connectome state → Ollama parameters
+- `chat_cli.py` — interactive CLI with `++`/`--` feedback + Giant Fiber
+  frustration circuit
+- `test_coprocessor.py` — offline validation cases
 
 ```bash
-# offline demo (mock Ollama)
-python sim/chat_cli.py --mock
-
-# live against Steam Deck Ollama
+python sim/chat_cli.py --mock                        # offline demo (mock Ollama)
 python sim/chat_cli.py --base-url http://steamdeck:11434 --model llama3.1:8b
 ```
 
-Telemetry format: `[Compass: 42° | Alert (Oct): 0.78 | Affinity: +0.35 | Temp: 0.65]`
+## Deployment
 
-## 🧠 Biological Co-Processor: Frustration Detection (Giant Fiber Circuit)
+See **`docs/DEPLOYMENT.md`** for the full guide (prerequisites, systemd unit,
+verification, rollback). Highlights:
 
-This project integrates an emulation of *Drosophila* neural circuits (specifically the **Giant Fiber Escape Neuron**) to manage dialogue dynamics in everyday conversations without relying on heavy sentiment classifiers.
+- systemd user unit `flybrain`: uvicorn runs **under** `systemd-inhibit` so
+  the Deck never sleeps mid-flight; `MemoryMax=2G`, `CPUQuota=200%`
+  (thermally-throttled Deck budget).
+- `scripts/deploy_deck.sh` is idempotent (rsync `--delete` + venv recreate) —
+  re-deploying any older tree is a full rollback.
 
-### How It Works
-* **Potential Accumulation:** Repetitive, frustrated, or unresolved messages increase the membrane potential of the biological circuit.
-* **Escape Firing:** When the potential reaches the critical threshold (0.5), the assistant automatically truncates verbose explanations and adopts a strictly direct tone focused on immediate resolution.
-* **Recovery:** Constructive dialogue and natural pauses allow passive decay of the potential.
+## Quality Gates
 
-### Practical CLI Example
+`make check` runs, in order:
 
-```text
-User: How do I list processes listening on port 8080?
-[GF Potential: 0.05 | Mode: Normal | Temp: 0.60]
-Bot: You can check which processes are listening on that port using lsof or ss with appropriate privileges:
-1. With lsof: `lsof -i :8080`
-2. With ss: `ss -tulpn | grep :8080`
-Either will show the PID associated with the service.
+| Gate | Command | Result today |
+|------|---------|--------------|
+| Docs check | `make docs-check` | BLOCKER — docs missing/stale |
+| Code check | `make code-check` | BLOCKER — TODOs |
+| Test check | `make test-check` | WARNING — coverage < 80% |
+| Lint check | `make lint-check` | BLOCKER — ruff errors (`src tests`) |
+| Tautology check | `make tautology-check` | BLOCKER — always-true assertions |
+| Safety check | `make safety-check` | BLOCKER — traceability matrix |
 
-User: Nothing happened.
-[GF Potential: 0.35 | Mode: Normal | Temp: 0.50]
-Bot: If the command returned no output, verify you are running it with sufficient privileges or that the port is actually active. Try `sudo ss -tulpn | grep 8080`.
+CI (`.github/workflows/ci.yml`) runs the same gates on every PR. Current
+state: **213 tests pass, 18 skipped, 80.7% coverage**, 20 REQs / 46 hazards
+traced. Every HTTP JSON response is sanitized by
+`SanitizingJSONResponse`; see `docs/QUALITY_GATES.md` for details.
 
-User: Still nothing, it keeps failing!
-[GF Potential: 0.82 | Mode: ESCAPE FIRED | Temp: 0.10]
-Bot: 
-- Run: `sudo ss -lnt` and check if the port appears in the listening column.
-- If it does not appear, the service is not running. Do you want to start the service or check system logs?
-```
+## Project Docs
 
-## Development
-
-```bash
-make test   # run test suite (pytest)
-make lint   # ruff check
-make format # ruff format
-```
-
-## TODO
-
-- [ ] Persistent memory/DB for co-processor state
-- [ ] Streaming UI for chat_cli
-- [ ] Real-time audio integration
-- [ ] Move simulation to Vulkan compute kernel (un-defer T005)
-- [ ] CI: add codecov token for coverage upload
-- [ ] Safety gate closure for gRPC surface (T013)
+- `docs/VISION.md` — problem space
+- `docs/REQUIREMENTS.md` — functional requirements & safety traceability
+- `docs/ROADMAP.md` — sprints, milestones, risk register
+- `docs/DESIGN.md` — architecture
+- `docs/DEPLOYMENT.md` — deployment guide
+- `docs/QUALITY_GATES.md` — gate definitions
 
 ## Hardware Target
 
-Steam Deck (AMD APU, VANGOGH GPU, RADV Vulkan driver). No FC firmware changes — integration via MAVLink/CRSF only.
+Steam Deck (AMD APU, VANGOGH GPU, RADV Vulkan driver). No FC firmware
+changes — integration via MAVLink/CRSF only. Sprint 03 hardware validation
+(T010–T013) is pending access to the physical Deck.
