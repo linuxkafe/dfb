@@ -392,3 +392,211 @@ class TestServiceLifespan:
 
         engine = get_cpu_engine()
         assert engine._initialized is True
+
+
+class TestJsonSanitization:
+    """HTTP boundary must never emit non-finite floats (uvicorn HTTP 500)."""
+
+    @pytest.fixture
+    def client(self):
+        return TestClient(app)
+
+    def test_sanitizing_response_flat(self):
+        """Unit: inf/nan become null, finite floats untouched."""
+        from src.dfb.serialization import SanitizingJSONResponse
+
+        resp = SanitizingJSONResponse(
+            content={"a": float("inf"), "b": float("nan"), "c": 1.5, "d": 2}
+        )
+        assert b'"a":null' in resp.body
+        assert b'"b":null' in resp.body
+        assert b'"c":1.5' in resp.body
+        assert b'"d":2' in resp.body
+
+    def test_sanitizing_response_nested(self):
+        """Unit: non-finite floats at any depth are flattened."""
+        from src.dfb.serialization import SanitizingJSONResponse
+
+        content = {
+            "list": [1.0, float("inf")],
+            "dict": {"deep": {"x": float("nan")}},
+            "tuple": (0.0, float("inf")),
+        }
+        body = SanitizingJSONResponse(content=content).body
+        assert b'"list":[1.0,null]' in body
+        assert b'"deep":{"x":null}' in body
+        assert b'"tuple":[0.0,null]' in body
+
+    def test_version_endpoint_is_serializable_with_inf_version(self, client):
+        """Endpoint: inf value anywhere still yields a 200 with null."""
+        with patch("src.dfb.service.__version__", float("inf")):
+            response = client.get("/version")
+        assert response.status_code == 200
+        assert response.json() == {"version": None}
+
+    def test_health_endpoint_sanitizes_inf_link_age(self, client):
+        """Endpoint: /health never 500s on non-finite link age."""
+        with patch("src.dfb.service.get_overall_health") as mock_health:
+            mock_health.return_value = (
+                "degraded",
+                {
+                    "mavlink_link": {
+                        "status": "degraded",
+                        "details": {"link_age_s": float("inf")},
+                    }
+                },
+            )
+            response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["components"]["mavlink_link"]["details"]["link_age_s"] is None
+
+    def test_telemetry_endpoint_sanitizes_inf_position(self, client):
+        """Endpoint: /telemetry never 500s on non-finite telemetry floats."""
+        with (
+            patch("src.dfb.service.get_telemetry_state") as mock_mavlink,
+            patch("src.dfb.service.get_crsf_state") as mock_crsf,
+        ):
+            mock_mavlink.return_value = MagicMock(
+                timestamp=0.0,
+                link_ok=False,
+                lat=float("inf"),
+                lon=float("nan"),
+                alt=100000,
+                relative_alt=50000,
+                roll=0.1,
+                pitch=0.0,
+                yaw=1.57,
+                vx=100,
+                vy=0,
+                vz=0,
+                voltage_v=12.0,
+                current_a=5.0,
+                remaining_pct=80.0,
+                rc_channels=[0.0] * 16,
+                msg_counts={"HEARTBEAT": 10},
+                flight_mode="GUIDED",
+                armed=True,
+            )
+            mock_crsf.return_value = MagicMock(
+                timestamp=0.0,
+                link_ok=False,
+                channels=[0.0] * 16,
+                rssi=-50,
+                lq=90,
+                snr=10,
+                rf_mode=0,
+                voltage=12.0,
+                current=5.0,
+                capacity=1000,
+                gps=None,
+                msg_counts={},
+            )
+            response = client.get("/telemetry")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["mavlink"]["position"]["lat"] is None
+        assert data["mavlink"]["position"]["lon"] is None
+
+    def test_decide_telemetry_sanitizes_inf_safety(self, client):
+        """Endpoint: /decide (telemetry mode) never 500s on inf link age."""
+        with (
+            patch("src.dfb.service.get_telemetry_state") as mock_mavlink,
+            patch("src.dfb.service.get_crsf_state") as mock_crsf,
+            patch("src.dfb.service.get_advisor") as mock_advisor,
+        ):
+            mock_mavlink.return_value = MagicMock(
+                timestamp=time.time(),
+                link_ok=True,
+                lat=47.0,
+                lon=8.0,
+                alt=100000,
+                relative_alt=50000,
+                roll=0.1,
+                pitch=0.0,
+                yaw=1.57,
+                vx=100,
+                vy=0,
+                vz=0,
+                voltage_v=12.0,
+                current_a=5.0,
+                remaining_pct=80.0,
+                rc_channels=[0.0] * 16,
+                msg_counts={"HEARTBEAT": 10},
+                flight_mode="GUIDED",
+                armed=True,
+                _raw=MagicMock(
+                    lat=47.0,
+                    lon=8.0,
+                    remaining_pct=80.0,
+                    link_ok=True,
+                    timestamp=time.time(),
+                ),
+            )
+            mock_crsf.return_value = MagicMock(
+                timestamp=time.time(),
+                link_ok=True,
+                channels=[0.0] * 16,
+                rssi=-50,
+                lq=90,
+                snr=10,
+                rf_mode=0,
+                voltage=12.0,
+                current=5.0,
+                capacity=1000,
+                gps=None,
+                msg_counts={},
+            )
+            mock_advisor.return_value.advise.return_value = MagicMock(
+                heading_deg=90.0,
+                altitude_m=50.0,
+                speed_mps=10.0,
+                mode="GUIDED",
+                reason="Navigating to target",
+                distance_to_target=1000.0,
+                bearing_to_target=90.0,
+                safety=MagicMock(
+                    safe=True,
+                    violations=[],
+                    warnings=[],
+                    battery_pct=80.0,
+                    link_ok=True,
+                    link_age_s=float("inf"),
+                    gps_fix_type=3,
+                    hdop=float("nan"),
+                    vdop=1.0,
+                    ground_speed=10.0,
+                    climb_rate=0.0,
+                    alt_agl=50.0,
+                ),
+            )
+            payload = {
+                "use_telemetry": True,
+                "target_lat": 47.0,
+                "target_lon": 8.0,
+                "target_alt": 50.0,
+                "target_speed": 10.0,
+            }
+            response = client.post("/decide", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["safety"]["link_age_s"] is None
+        assert data["safety"]["hdop"] is None
+
+    def test_decide_maze_sanitizes_inf_confidence(self, client):
+        """Endpoint: /decide (maze mode) never 500s on non-finite logits."""
+        import numpy as np
+
+        grid = [[0] * 10 for _ in range(10)]
+
+        with patch("src.dfb.service.get_cpu_engine") as mock:
+            mock.return_value.compute.return_value = np.array(
+                [float("inf"), float("nan"), 1.0, 0.0], dtype=np.float32
+            )
+            response = client.post("/decide", json={"grid": grid})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["confidence"] is None
+        assert body["logits"][0] is None
+        assert body["logits"][1] is None
+        assert body["logits"][2] == 1.0

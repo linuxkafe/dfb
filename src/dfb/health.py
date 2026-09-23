@@ -1,6 +1,5 @@
 """Component health checking for Deck Fly Brain."""
 
-import math
 import time
 from dataclasses import dataclass
 from typing import Literal
@@ -8,6 +7,7 @@ from typing import Literal
 from src.dfb.cpu_engine import get_cpu_engine
 from src.dfb.crsf_ingest import get_crsf_state
 from src.dfb.mavlink_ingest import get_telemetry_state
+from src.dfb.serialization import json_safe
 
 
 @dataclass
@@ -123,23 +123,6 @@ def check_decision_engine() -> ComponentHealth:
         return ComponentHealth(status="unhealthy", details={"error": str(e)})
 
 
-def _json_safe(value):
-    """Convert non-JSON-serialisable values (inf/nan) to None.
-
-    A real ASGI server (uvicorn) fails to serialise non-finite floats in
-    response JSON with HTTP 500. Telemetry timestamps default to 0 before the
-    first message, producing float('inf') link ages — sanitise at the API
-    boundary while keeping internal semantics unchanged.
-    """
-    if isinstance(value, float) and not math.isfinite(value):
-        return None
-    if isinstance(value, dict):
-        return {k: _json_safe(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(v) for v in value]
-    return value
-
-
 def get_overall_health() -> tuple[Literal["ok", "degraded", "unhealthy"], dict]:
     """Get overall system health and component details."""
     cpu = check_cpu_engine()
@@ -148,15 +131,15 @@ def get_overall_health() -> tuple[Literal["ok", "degraded", "unhealthy"], dict]:
     decision = check_decision_engine()
 
     components = {
-        "cpu_engine": {"status": cpu.status, "details": _json_safe(cpu.details)},
+        "cpu_engine": {"status": cpu.status, "details": json_safe(cpu.details)},
         "mavlink_link": {
             "status": mavlink.status,
-            "details": _json_safe(mavlink.details),
+            "details": json_safe(mavlink.details),
         },
-        "crsf_link": {"status": crsf.status, "details": _json_safe(crsf.details)},
+        "crsf_link": {"status": crsf.status, "details": json_safe(crsf.details)},
         "decision_engine": {
             "status": decision.status,
-            "details": _json_safe(decision.details),
+            "details": json_safe(decision.details),
         },
     }
 

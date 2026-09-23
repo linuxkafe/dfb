@@ -98,6 +98,6 @@ venv recreate), so a re-deploy of any older tree is a full rollback.
 - Changing ports/`MAVLINK_*`/`CRSF_*` requires editing the unit, then
   `systemctl --user daemon-reload` on the Deck. The deploy tests assert
   port/env consistency, keeping unit and code from drifting.
-- Pre-existing float-serialization caveat: only `/health` applies
-  non-finite float sanitization; `/telemetry`, `/decide`, `/version`
-  are queued as production debt (review Sprint 02).
+- All HTTP JSON responses pass through `SanitizingJSONResponse` (the app's
+  `default_response_class`), so non-finite floats (`inf`/`nan` link ages)
+  become `null` rather than HTTP 500 — see QUALITY_GATES.md.

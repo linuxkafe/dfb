@@ -47,6 +47,7 @@ from src.dfb.metrics import (
     update_mavlink_link_status,
     update_mavlink_rate,
 )
+from src.dfb.serialization import SanitizingJSONResponse
 from src.dfb.state_estimator import estimate_state
 
 # Confirmation token store (in-memory, single-use, 30s TTL)
@@ -135,7 +136,12 @@ async def lifespan(app: FastAPI):
     shutdown_cpu_engine()
 
 
-app = FastAPI(title="Deck Fly Brain", version=__version__, lifespan=lifespan)
+app = FastAPI(
+    title="Deck Fly Brain",
+    version=__version__,
+    lifespan=lifespan,
+    default_response_class=SanitizingJSONResponse,
+)
 
 # Add correlation ID middleware
 app.add_middleware(CorrelationIdMiddleware)
